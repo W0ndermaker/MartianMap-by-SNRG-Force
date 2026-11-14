@@ -4,6 +4,7 @@ import { EvaPanel } from './panels/EvaPanel'
 import { LayerControls } from './panels/LayerControls'
 import { ProfileChart } from './panels/ProfileChart'
 import { Header } from './layout/Header'
+import { CopilotBanner } from './map/CopilotBanner'
 import { useAppStore } from './store/useAppStore'
 import { useCopilotStore } from './store/useCopilotStore'
 
@@ -44,6 +45,7 @@ export default function App() {
           >
             <MapView />
           </Suspense>
+          <CopilotBanner />
         </section>
         <aside
           aria-label="EVA plan"

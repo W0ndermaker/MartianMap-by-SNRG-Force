@@ -25,8 +25,13 @@ interface CopilotState {
   /** Last spoken message and its level, for the panel. */
   message: { text: string; level: CopilotScenario['events'][number]['level'] } | null
   voice: boolean
+  /** The crew acknowledged the current alert: the banner stops blinking. */
+  acknowledged: boolean
   play: (scenarioCase: CopilotCase) => Promise<void>
   stop: () => void
+  acknowledge: () => void
+  /** Leaves the demo and returns to the planning panel. */
+  close: () => void
   toggleVoice: () => void
 }
 
@@ -56,11 +61,12 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
   index: 0,
   message: null,
   voice: true,
+  acknowledged: false,
 
   play: async (scenarioCase) => {
     get().stop()
     const id = ++runId
-    set({ state: 'loading', index: 0, message: null })
+    set({ state: 'loading', index: 0, message: null, acknowledged: false })
     let scenario = get().loaded[scenarioCase]
     try {
       scenario ??= (await api.copilotScenario(scenarioCase)).data
@@ -86,7 +92,8 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
       if (id !== runId) return
       set({ index: i })
       for (const e of eventsAt.get(i) ?? []) {
-        set({ message: { text: e.message, level: e.level } })
+        // A new alert needs a new acknowledgement.
+        set({ message: { text: e.message, level: e.level }, acknowledged: false })
         // "All good" is spoken while walking on; warnings pause the walk until they are said.
         if (e.level === 'go') void speak(e.message, get().voice)
         else await speak(e.message, get().voice)
@@ -107,6 +114,13 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
     timer = null
     window.speechSynthesis?.cancel()
     if (get().state === 'playing' || get().state === 'loading') set({ state: 'idle' })
+  },
+
+  acknowledge: () => set({ acknowledged: true }),
+
+  close: () => {
+    get().stop()
+    set({ state: 'idle', index: 0, message: null, acknowledged: false })
   },
 
   toggleVoice: () => {
