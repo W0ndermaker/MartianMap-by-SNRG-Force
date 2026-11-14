@@ -13,5 +13,10 @@ def load_stub(name: str) -> Any:
     Args:
         name: stub file name without the ``.json`` extension.
     """
-    with (STUBS_DIR / f"{name}.json").open(encoding="utf-8") as f:
+    return load_json(STUBS_DIR / f"{name}.json")
+
+
+def load_json(path: Path) -> Any:
+    """Read a UTF-8 JSON file and return the parsed data."""
+    with path.open(encoding="utf-8") as f:
         return json.load(f)

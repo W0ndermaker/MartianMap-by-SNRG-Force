@@ -81,9 +81,35 @@ def test_health_reports_terrain_kind_and_grid():
     assert data["bounds"] == [round(v, 4) for v in bounds(terrain.grid)]
 
 
-def test_health_terrain_ignores_dem_path_until_loader_exists(monkeypatch, tmp_path):
+def test_health_falls_back_to_synthetic_when_dem_file_is_missing(monkeypatch, tmp_path):
     monkeypatch.setenv("DEM_PATH", str(tmp_path / "missing.tif"))
     assert client.get("/api/health").json()["terrain"] == "synthetic"
+
+
+def test_health_reports_real_terrain_when_dem_loads(monkeypatch, tmp_path):
+    import numpy as np
+    import rasterio
+
+    from app.core import constants as c
+    from app.core.geo import make_grid
+
+    grid = make_grid(c.DEM_BOUNDS, 500.0)
+    path = tmp_path / "dem.tif"
+    profile = {"driver": "GTiff", "dtype": "float32", "count": 1, "nodata": float("nan")}
+    with rasterio.open(path, "w", height=grid.n_rows, width=grid.n_cols, **profile) as dst:
+        dst.write(np.full(grid.shape, -4490.0, dtype=np.float32), 1)
+        dst.update_tags(
+            **{
+                c.DEM_TAG_LON0: grid.lon0,
+                c.DEM_TAG_LAT_TOP: grid.lat_top,
+                c.DEM_TAG_LAT_TS: grid.lat_ts,
+                c.DEM_TAG_CELL_SIZE_M: grid.cell_size_m,
+            }
+        )
+    monkeypatch.setenv("DEM_PATH", str(path))
+    data = client.get("/api/health").json()
+    assert data["terrain"] == "real"
+    assert data["cell_size_m"] == 500.0
 
 
 def _route(**overrides):
@@ -125,3 +151,49 @@ def test_route_no_route_when_slope_limit_tiny():
     data = _route(max_slope_deg=0.01)
     assert data["status"] == "no_route"
     assert data["reason"]
+
+
+def test_conditions_default_is_latest_sol():
+    data = client.get("/api/conditions").json()
+    assert data["sol"] == 4995
+    ConditionsResponse.model_validate(data)
+
+
+def test_conditions_exact_sol():
+    data = client.get("/api/conditions", params={"sol": 10}).json()
+    assert data["sol"] == 10
+    assert data["temp_min_c"] == -75.0
+
+
+def test_conditions_missing_sol_returns_nearest():
+    # Sols 2..8 have no data; 1 is the closest to 3, 9 is the closest to 7.
+    assert client.get("/api/conditions", params={"sol": 3}).json()["sol"] == 1
+    assert client.get("/api/conditions", params={"sol": 7}).json()["sol"] == 9
+
+
+@pytest.mark.parametrize("sol", [-5, 0, 10**9])
+def test_conditions_sol_out_of_range_does_not_fail(sol):
+    r = client.get("/api/conditions", params={"sol": sol})
+    assert r.status_code == 200
+    ConditionsResponse.model_validate(r.json())
+
+
+def test_conditions_non_integer_sol_is_422():
+    assert client.get("/api/conditions", params={"sol": "abc"}).status_code == 422
+
+
+def test_poi_points_are_inside_working_area():
+    from app.core.geo import to_cell
+    from app.core.terrain import build_synthetic_terrain
+
+    grid = build_synthetic_terrain().grid
+    features = client.get("/api/poi").json()["features"]
+    assert len(features) >= 5
+    for f in features:
+        assert to_cell(grid, *f["geometry"]["coordinates"]) is not None, f["properties"]["id"]
+
+
+def test_root_redirects_to_docs():
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307)
+    assert r.headers["location"] == "/docs"

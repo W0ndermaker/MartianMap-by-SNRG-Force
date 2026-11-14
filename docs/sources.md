@@ -6,7 +6,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ## NASA data
 
-- 
+- Mars MSL Gale Merged DEM 1m (HRSC, CTX and HiRISE DEMs tied to MOLA) — elevation map of the working area, resampled to 10 m — https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m — USGS Astrogeology, public domain
 
 ## Space agency partner data
 

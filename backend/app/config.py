@@ -29,3 +29,8 @@ def get_allowed_origins() -> list[str]:
     """Return CORS origins from ALLOWED_ORIGINS (comma-separated)."""
     raw = _get_setting("ALLOWED_ORIGINS") or DEFAULT_ALLOWED_ORIGINS
     return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+def get_dem_path() -> str:
+    """Return DEM_PATH (path to the prepared elevation GeoTIFF), or '' for synthetic terrain."""
+    return _get_setting("DEM_PATH")

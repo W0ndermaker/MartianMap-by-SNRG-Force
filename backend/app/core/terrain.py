@@ -1,9 +1,11 @@
 """Elevation grid, slope map and synthetic terrain."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
+import rasterio
 
 from app.core import constants as c
 from app.core.geo import GridSpec, make_grid
@@ -49,4 +51,29 @@ def build_synthetic_terrain() -> Terrain:
     elev = make_synthetic_elev(grid)
     return Terrain(
         elev=elev, slope=compute_slope_deg(elev, grid.cell_size_m), grid=grid, kind="synthetic"
+    )
+
+
+def load_terrain(path: str | Path) -> Terrain:
+    """Load a GeoTIFF prepared by scripts/prepare_dem.py.
+
+    The file holds elevation in meters (NaN = no data); the grid geometry is read from the
+    GRID_* tags, so no projection library is involved.
+    """
+    with rasterio.open(path) as src:
+        elev = src.read(1).astype(np.float32)
+        tags = src.tags()
+    try:
+        grid = GridSpec(
+            lon0=float(tags[c.DEM_TAG_LON0]),
+            lat_top=float(tags[c.DEM_TAG_LAT_TOP]),
+            lat_ts=float(tags[c.DEM_TAG_LAT_TS]),
+            cell_size_m=float(tags[c.DEM_TAG_CELL_SIZE_M]),
+            n_rows=elev.shape[0],
+            n_cols=elev.shape[1],
+        )
+    except KeyError as exc:
+        raise ValueError(f"{path} is not a prepared elevation map: missing tag {exc}") from exc
+    return Terrain(
+        elev=elev, slope=compute_slope_deg(elev, grid.cell_size_m), grid=grid, kind="real"
     )
