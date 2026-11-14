@@ -1,7 +1,7 @@
 // Shared app state for the map (developer A) and the panels (developer C).
 
 import { create } from 'zustand'
-import { api } from '../api/client'
+import { api, hasBackend, HEARTBEAT_MS, ping } from '../api/client'
 import type { Conditions, Health, LonLat, PoiCollection, RouteResponse } from '../api/types'
 // Defaults from data/suit_params.json (max_slope_deg, speed_flat_m_s).
 import suit from '@data/suit_params.json'
@@ -25,6 +25,10 @@ export interface AppState {
   connecting: boolean
   /** True when the latest answer came from offline data (resets once the server answers). */
   offline: boolean
+  /** The server answered before but the periodic check now fails. */
+  connectionLost: boolean
+  /** The shown route came from the server before the connection was lost: may be outdated. */
+  routeStale: boolean
 
   start: LonLat | null
   goal: LonLat | null
@@ -42,6 +46,8 @@ export interface AppState {
   layers: Layers
 
   init: () => Promise<void>
+  /** Checks the server every HEARTBEAT_MS; returns a function that stops the checks. */
+  startHeartbeat: () => () => void
   /** Sets start, then goal, then starts over with a new start. */
   placePoint: (point: LonLat) => void
   setStart: (point: LonLat | null) => void
@@ -63,6 +69,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   health: null,
   connecting: false,
   offline: false,
+  connectionLost: false,
+  routeStale: false,
   start: null,
   goal: null,
   maxSlopeDeg: suit.max_slope_deg.value,
@@ -87,6 +95,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       offline: health.offline || poi.offline,
     })
     await get().loadConditions()
+  },
+
+  startHeartbeat: () => {
+    if (!hasBackend) return () => {}
+    const id = setInterval(async () => {
+      const up = await ping()
+      const { connectionLost, offline, route } = get()
+      if (!up && !connectionLost && !offline) {
+        // Lost contact: whatever the panels show may be outdated; never leave it green.
+        set({ connectionLost: true, routeStale: route?.status === 'ok' })
+      } else if (up && (connectionLost || offline)) {
+        set({ connectionLost: false })
+        await get().loadConditions(get().sol ?? undefined) // also re-plans a shown route
+      }
+    }, HEARTBEAT_MS)
+    return () => clearInterval(id)
   },
 
   placePoint: (point) => {
@@ -114,9 +138,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   planRoute: async () => {
-    const { start, goal, maxSlopeDeg, sol } = get()
+    const { start, goal, maxSlopeDeg, sol, conditionsState } = get()
     if (!start || !goal) return
     set({ routeState: 'loading' })
+    // Never plan without the sol while conditions are still loading: the verdict would ignore the
+    // weather. loadConditions plans the route as soon as the sol is known.
+    if (sol === null && conditionsState !== 'error') return
     try {
       const result = await api.route({
         start,
@@ -127,7 +154,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       })
       // Ignore a response for points the user has already moved.
       if (get().start !== start || get().goal !== goal || get().maxSlopeDeg !== maxSlopeDeg) return
-      set({ route: result.data, routeState: 'ready', offline: result.offline })
+      set({
+        route: result.data,
+        routeState: 'ready',
+        offline: result.offline,
+        routeStale: false,
+        connectionLost: result.offline && hasBackend ? get().connectionLost : false,
+      })
     } catch (error) {
       console.error(error)
       set({ route: null, routeState: 'error' })
@@ -146,8 +179,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         conditionsState: 'ready',
         offline: result.offline,
       })
-      // The verdict depends on the sol: update a shown route.
-      if (get().route) void get().planRoute()
+      // The verdict depends on the sol: plan or update the route once the sol is known.
+      if (get().start && get().goal) void get().planRoute()
     } catch (error) {
       console.error(error)
       set({ conditionsState: 'error' })

@@ -42,6 +42,24 @@ async function withFallback<T>(online: () => Promise<T>, fallback: () => Promise
   }
 }
 
+/** Interval of the connection check while the app is open. */
+export const HEARTBEAT_MS = 30_000
+/** The connection check gives up after this long (the server is awake if it was online). */
+const PING_TIMEOUT_MS = 8_000
+
+/** True when the backend answers GET /api/health; false when it is unreachable or not set. */
+export async function ping(): Promise<boolean> {
+  if (!API_URL) return false
+  try {
+    await request<Health>('/health', undefined, PING_TIMEOUT_MS)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export const hasBackend = Boolean(API_URL)
+
 export const api = {
   /** First call of the session: waits long enough for a sleeping server to wake up. */
   health: () =>

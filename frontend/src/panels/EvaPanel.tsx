@@ -32,12 +32,24 @@ function Metric({ label, value, warn = false }: { label: string; value: string; 
   )
 }
 
-function VerdictBanner({ verdict, reasons }: { verdict: Verdict; reasons: string[] }) {
+function VerdictBanner({
+  verdict,
+  reasons,
+  stale,
+}: {
+  verdict: Verdict
+  reasons: string[]
+  stale: boolean
+}) {
+  // A verdict from before the connection was lost is grey, never green or cyan.
+  const style = stale ? 'bg-stone-700/40 text-stone-300 ring-stone-500/60' : VERDICT_STYLE[verdict]
   return (
-    <div className={`col-span-2 rounded-lg px-3 py-2 ring-1 ${VERDICT_STYLE[verdict]}`}>
+    <div className={`col-span-2 rounded-lg px-3 py-2 ring-1 ${style}`}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-base font-bold tracking-wide">{VERDICT_LABEL[verdict]}</span>
-        <span className="text-[10px] uppercase tracking-wide opacity-70">planning estimate</span>
+        <span className="text-[10px] uppercase tracking-wide opacity-70">
+          {stale ? 'Last known — may be outdated' : 'planning estimate'}
+        </span>
       </div>
       {reasons.length > 0 && (
         <ul className="mt-1 space-y-0.5 text-xs">
@@ -90,6 +102,7 @@ export function EvaPanel() {
   const route = useAppStore((s) => s.route)
   const state = useAppStore((s) => s.routeState)
   const offline = useAppStore((s) => s.offline)
+  const routeStale = useAppStore((s) => s.routeStale)
   const clearRoute = useAppStore((s) => s.clearRoute)
   const straight = useMapStore((s) => s.straight)
   const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg)
@@ -121,7 +134,11 @@ export function EvaPanel() {
     body = (
       <div className={`grid grid-cols-2 gap-2 ${state === 'loading' ? 'opacity-60' : ''}`}>
         {route.verdict && (
-          <VerdictBanner verdict={route.verdict} reasons={route.verdict_reasons ?? []} />
+          <VerdictBanner
+            verdict={route.verdict}
+            reasons={route.verdict_reasons ?? []}
+            stale={routeStale}
+          />
         )}
         <Metric label="Distance" value={fmtDistance(route.distance_m)} />
         <Metric label="Time out" value={fmtDuration(route.duration_min)} />

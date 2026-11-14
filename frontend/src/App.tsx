@@ -32,11 +32,15 @@ export default function App() {
   const init = useAppStore((s) => s.init)
   const offline = useAppStore((s) => s.offline)
   const connecting = useAppStore((s) => s.connecting)
+  const connectionLost = useAppStore((s) => s.connectionLost)
+  const startHeartbeat = useAppStore((s) => s.startHeartbeat)
   const terrain = useAppStore((s) => s.health?.terrain)
 
   useEffect(() => {
     void init()
   }, [init])
+
+  useEffect(() => startHeartbeat(), [startHeartbeat])
 
   return (
     <div className="flex min-h-dvh flex-col gap-3 bg-stone-950 p-3 text-stone-100 lg:h-dvh">
@@ -49,7 +53,15 @@ export default function App() {
             Waking up the server…
           </Badge>
         )}
-        {offline && !connecting && (
+        {connectionLost && (
+          <span
+            title="The route server stopped answering. Shown values are the last known ones and may be outdated."
+            className="rounded-full bg-fuchsia-500/20 px-2.5 py-0.5 text-xs font-semibold text-fuchsia-200 ring-1 ring-fuchsia-400/60"
+          >
+            Connection lost
+          </span>
+        )}
+        {offline && !connecting && !connectionLost && (
           <Badge title="The server is unreachable; showing precomputed demo routes and bundled data.">
             Offline demo
           </Badge>
