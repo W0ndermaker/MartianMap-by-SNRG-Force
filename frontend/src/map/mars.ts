@@ -110,12 +110,20 @@ export const TREK_LAYERS = {
 // ---------- Mars colour tint for the grayscale HiRISE / CTX mosaics ----------
 // HiRISE RED and CTX are single-band (grayscale) products. For readability the map can map gray levels to a
 // Mars-like palette. This is a VISUALISATION, not true colour (labelled in the UI).
+// Stops calibrated on Gale: CTX gray-level percentiles (1, 10, 30, 50, 70, 90, 99 %) mapped to the Viking MDIM 2.1
+// colour at the same luminance percentiles over the same tiles (z7, rows 67-68, cols 225-226), ~10 % brighter,
+// so the high-resolution area blends into the true-colour Viking base. The top 1 % of Viking (bluish clouds/frost)
+// is replaced by a warm tone.
 const TINT_STOPS: [number, [number, number, number]][] = [
-  [0, [28, 16, 12]],
-  [70, [96, 52, 32]],
-  [140, [170, 102, 62]],
-  [200, [214, 156, 106]],
-  [255, [246, 214, 178]],
+  [0, [30, 22, 26]],
+  [46, [45, 33, 38]],
+  [76, [62, 52, 58]],
+  [148, [86, 72, 77]],
+  [176, [108, 87, 88]],
+  [190, [132, 104, 101]],
+  [203, [165, 135, 130]],
+  [231, [200, 172, 160]],
+  [255, [225, 200, 188]],
 ];
 const TINT_LUT = (() => {
   const lut = new Uint8ClampedArray(256 * 3);
