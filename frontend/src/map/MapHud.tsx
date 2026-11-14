@@ -159,12 +159,16 @@ export default function MapHud(p: Props) {
             <span className="text-stone-500">(model assumption)</span>
           </div>
         )}
-        <div className={`${panel} self-stretch px-2.5 py-1 text-[10px] leading-snug text-stone-400`}>
+        <details className={`${panel} group self-stretch px-2.5 py-1 text-[10px] leading-snug text-stone-400`}>
+          <summary className="cursor-pointer list-none truncate marker:hidden">
+            Data: NASA Mars Trek (Viking, HiRISE, CTX, THEMIS, MOLA), USGS Astrogeology ·{' '}
+            <span className="text-stone-300 underline decoration-dotted group-open:hidden">credits</span>
+          </summary>
           Imagery: NASA/JPL/USGS (Viking MDIM 2.1) · NASA/JPL/University of Arizona (HiRISE) · NASA/JPL/MSSS (CTX) ·
           NASA/JPL/ASU (THEMIS) · NASA/GSFC (MOLA) · USGS (SIM 3292), via NASA Mars Trek. Terrain: USGS Astrogeology
           DEMs (HiRISE, HRSC-MOLA; ESA/DLR/FU Berlin).
           {p.terrainNote && <span className="block text-stone-500">{p.terrainNote}</span>}
-        </div>
+        </details>
       </div>
     </div>
   )

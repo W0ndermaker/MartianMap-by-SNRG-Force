@@ -21,9 +21,10 @@ export type SlopeBand = 'low' | 'mid' | 'high';
 
 /**
  * Display bands relative to the user's max-slope limit (the backend treats anything steeper as impassable).
- * The 50% / 75% split is a display convention (MODEL ASSUMPTION), not a physiological threshold.
+ * Red starts where the backend flags a hazard (HAZARD_SLOPE_FRACTION = 0.8 of the limit); the 50 % split for
+ * yellow is a display convention. Both are MODEL ASSUMPTIONS, not physiological thresholds.
  */
-export const BAND_SPLIT = { mid: 0.5, high: 0.75 };
+export const BAND_SPLIT = { mid: 0.5, high: 0.8 };
 
 export function bandFor(slopeDeg: number, maxSlopeDeg: number): SlopeBand {
   if (slopeDeg >= maxSlopeDeg * BAND_SPLIT.high) return 'high';

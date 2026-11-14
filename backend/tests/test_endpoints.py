@@ -197,3 +197,12 @@ def test_root_redirects_to_docs():
     r = client.get("/", follow_redirects=False)
     assert r.status_code in (302, 307)
     assert r.headers["location"] == "/docs"
+
+
+def test_route_line_starts_and_ends_at_the_requested_points():
+    start, goal = [137.35, -4.62], [137.40, -4.70]
+    data = _route(start=start, goal=goal)
+    assert data["status"] == "ok"
+    coords = data["path"]["coordinates"]
+    assert coords[0][:2] == pytest.approx(start)
+    assert coords[-1][:2] == pytest.approx(goal)

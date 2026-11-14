@@ -1,11 +1,13 @@
-import { useEffect } from 'react'
-import MapView from './map/MapView'
+import { lazy, Suspense, useEffect } from 'react'
 import { ConditionsPanel } from './panels/ConditionsPanel'
 import { EvaPanel } from './panels/EvaPanel'
 import { LayerControls } from './panels/LayerControls'
 import { PoiCard } from './panels/PoiCard'
 import { ProfileChart } from './panels/ProfileChart'
 import { useAppStore } from './store/useAppStore'
+
+// CesiumJS is ~4 MB: load the 3D map separately so the panels appear at once.
+const MapView = lazy(() => import('./map/MapView'))
 
 function Badge({ children, title }: { children: string; title: string }) {
   return (
@@ -49,7 +51,11 @@ export default function App() {
 
       <main className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[1fr_20rem] lg:grid-rows-[1fr_14rem]">
         <div className="min-h-[50vh] overflow-hidden rounded-xl bg-stone-900 ring-1 ring-white/10 lg:min-h-0">
-          <MapView />
+          <Suspense
+            fallback={<div className="flex h-full items-center justify-center text-sm text-stone-500">Loading 3D map…</div>}
+          >
+            <MapView />
+          </Suspense>
         </div>
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto lg:row-span-2">
           <EvaPanel />
