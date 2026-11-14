@@ -84,7 +84,7 @@ class ConditionsResponse(BaseModel):
     uv_index: Literal["low", "moderate", "high", "very_high"] | None = None
     radiation_usv_per_hour: float | None = None
     dust_opacity: float | None = None
-    risk_level: Literal["green", "yellow", "red"]
+    risk_level: Literal["green", "yellow", "red", "unknown"]
     source: str
 
 

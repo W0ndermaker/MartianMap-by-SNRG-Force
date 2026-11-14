@@ -1,6 +1,8 @@
 # Risk level rule
 
-`risk_level` in `GET /api/conditions` is computed by `data/scripts/build_data.py` for every sol. The worst factor wins; a missing value (`null`) never raises the level.
+`risk_level` in `GET /api/conditions` is computed by `data/scripts/build_data.py` for every sol. The worst known factor wins.
+
+**No data is never safe.** If the known factors are all green but a REMS input the rule needs (minimum air temperature or UV index) is missing, the level is `unknown`, not `green`. A yellow or red level from a known factor is kept. The backend applies the same guard when it loads the file.
 
 | Factor | Yellow | Red | Basis |
 | --- | --- | --- | --- |
@@ -17,10 +19,10 @@
 
 ## Result on the current data
 
-4745 sols: 3588 green, 1147 yellow, 10 red (all red days come from very cold nights).
+4745 sols: 3560 green, 1147 yellow, 10 red (all red days come from very cold nights), 28 unknown (27 sols without any REMS value, 1 without the minimum temperature).
 
 **Caveat on the red days:** all 10 have a minimum of exactly −100 °C. That looks like the lower limit of the reported values rather than a measured extreme, so these sols are flagged in the interface as "may be the sensor limit". They stay red: we cannot tell that the night was warmer.
 
 ## Effect on the route
 
-The route verdict (`POST /api/route` with `sol`) uses this level: red makes the EVA No-Go, yellow makes it Caution. The weather does not change walking time or oxygen use (no sourced coefficient for that).
+The route verdict (`POST /api/route` with `sol`) uses this level: red makes the EVA No-Go, yellow makes it Caution, unknown makes it Caution with the reason "No weather data for sol N". The weather does not change walking time or oxygen use (no sourced coefficient for that).

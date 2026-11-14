@@ -3,7 +3,7 @@
 No-Go: no way back, less than the emergency reserve (COPILOT_RESERVE_MIN minutes of oxygen)
 left after the way back, or a red-risk sol.
 Caution: less than RESERVE_CAUTION_FACTOR times the reserve left, steep sections on the way out
-or back, or a yellow-risk sol. Otherwise Go.
+or back, a yellow-risk sol, or a sol without weather data (unknown risk). Otherwise Go.
 The reserve rule is app.core.oxygen.reserve_state, the same one the EVA Copilot uses.
 """
 
@@ -66,6 +66,8 @@ def assess_eva(outbound: dict, back: dict, risk_level: str | None, sol: int | No
         reasons_no_go.append(f"High-risk surface conditions on sol {sol}")
     elif risk_level == "yellow":
         reasons_caution.append(f"Elevated-risk surface conditions on sol {sol}")
+    elif risk_level == "unknown":
+        reasons_caution.append(f"No weather data for sol {sol}")
 
     if reasons_no_go:
         verdict: Verdict = "no_go"

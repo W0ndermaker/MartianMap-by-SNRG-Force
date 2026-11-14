@@ -257,3 +257,19 @@ def _all_conditions():
 
     path = Path(__file__).resolve().parent.parent / "app" / "data" / "conditions.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_no_sol_without_weather_data_is_green_or_go():
+    """Missing data is never shown as safe: every sol without REMS inputs is unknown, never GO."""
+    rows = _all_conditions()
+    no_data = [r["sol"] for r in rows if r["temp_min_c"] is None or r["uv_index"] is None]
+    assert no_data, "test data should contain sols without measurements"
+    for sol in no_data:
+        cond = client.get("/api/conditions", params={"sol": sol}).json()
+        assert cond["sol"] == sol
+        assert cond["risk_level"] != "green", sol
+    for sol in no_data[:5]:
+        data = _route(sol=sol)
+        assert data["verdict"] != "go", sol
+        if client.get("/api/conditions", params={"sol": sol}).json()["risk_level"] == "unknown":
+            assert f"No weather data for sol {sol}" in data["verdict_reasons"]

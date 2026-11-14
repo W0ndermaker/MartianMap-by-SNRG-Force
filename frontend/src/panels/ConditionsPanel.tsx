@@ -7,12 +7,14 @@ const RISK_STYLE: Record<RiskLevel, string> = {
   green: 'bg-emerald-500/20 text-emerald-300 ring-emerald-400/50',
   yellow: 'bg-amber-500/20 text-amber-300 ring-amber-400/50',
   red: 'bg-red-500/20 text-red-300 ring-red-400/50',
+  unknown: 'bg-stone-600/30 text-stone-300 ring-stone-400/50',
 }
 
 const RISK_LABEL: Record<RiskLevel, string> = {
   green: 'Low risk',
   yellow: 'Caution',
   red: 'High risk',
+  unknown: 'No data — unknown risk',
 }
 
 /**

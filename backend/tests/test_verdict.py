@@ -85,3 +85,9 @@ def test_copilot_and_verdict_share_the_reserve():
 
     assert copilot.reserve_pct is reserve_pct
     assert copilot.planned_rate_pct_per_min is planned_rate_pct_per_min
+
+
+def test_unknown_weather_is_caution_with_reason():
+    r = assess_eva(_leg(10), _leg(10), "unknown", 18)
+    assert r["verdict"] == "caution"
+    assert "No weather data for sol 18" in r["verdict_reasons"]

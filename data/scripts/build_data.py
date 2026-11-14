@@ -156,7 +156,12 @@ def to_number(value: str) -> float | None:
 
 
 def risk_level(c: dict) -> str:
-    """Return green, yellow or red. Missing values do not raise the level."""
+    """Return green, yellow, red or unknown.
+
+    The worst known factor wins. Missing data is never treated as safe: if the known factors
+    are all green but a REMS input the rule needs (minimum temperature or UV) is missing, the
+    level is unknown.
+    """
 
     def at_least(value, yellow, red, higher_is_worse=True):
         if value is None:
@@ -175,6 +180,8 @@ def risk_level(c: dict) -> str:
         at_least(c["dust_opacity"], DUST_YELLOW_TAU, DUST_RED_TAU),
         1 if c["uv_index"] in UV_YELLOW else 0,
     )
+    if score == 0 and (c["temp_min_c"] is None or c["uv_index"] is None):
+        return "unknown"
     return ("green", "yellow", "red")[score]
 
 

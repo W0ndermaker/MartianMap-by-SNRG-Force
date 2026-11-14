@@ -23,8 +23,22 @@ def _conditions_by_sol() -> tuple[list[int], dict[int, ConditionsResponse]]:
     else:
         logger.warning("%s is missing; serving the stub conditions", CONDITIONS_FILE)
         raw = [load_stub("conditions")]
-    records = {r["sol"]: ConditionsResponse.model_validate(r) for r in raw}
+    records = {
+        r["sol"]: ConditionsResponse.model_validate(_never_green_without_data(r)) for r in raw
+    }
     return sorted(records), records
+
+
+def _never_green_without_data(record: dict) -> dict:
+    """Guard against data files built with an older rule: missing inputs are never "green".
+
+    If the minimum temperature or the UV index is missing, a "green" level becomes "unknown"
+    (docs/risk_rule.md). Known yellow and red levels are kept.
+    """
+    missing = record.get("temp_min_c") is None or record.get("uv_index") is None
+    if record.get("risk_level") == "green" and missing:
+        return {**record, "risk_level": "unknown"}
+    return record
 
 
 def get_conditions(sol: int | None) -> ConditionsResponse:

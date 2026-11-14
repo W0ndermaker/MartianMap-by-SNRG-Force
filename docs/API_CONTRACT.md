@@ -109,7 +109,7 @@ Surface conditions on a given Martian day. Without the `sol` parameter, the late
 | `uv_index` | string or null | `low`, `moderate`, `high`, `very_high` |
 | `radiation_usv_per_hour` | number or null | Dose rate |
 | `dust_opacity` | number or null | Dust optical depth |
-| `risk_level` | string | `green`, `yellow` or `red` |
+| `risk_level` | string | `green`, `yellow`, `red` or `unknown` (a measurement the rule needs is missing; never shown as safe) |
 | `source` | string | Data source |
 
 ```json
@@ -212,3 +212,4 @@ Demo EVA for the video and the offline mode: simulated suit telemetry on a real 
 | 2026-11-14 | Optional `sol` in the route request; round trip, oxygen reserve and `verdict` / `verdict_reasons` in the route response (backward compatible). Needs A and C sign-off | B |
 | 2026-11-14 | New `POST /api/copilot/assess`, `GET /api/copilot/scenario`; static files `reach_from_base.geojson`, `copilot_scenario.json` (additive). Needs A and C sign-off | B |
 | 2026-11-15 | Suit supply 420 min (NASA OIG: EMU up to 7 hours); verdict NO-GO below the 30-min reserve left after the way back, CAUTION below 1.5 × reserve; walk-back ring at 195 min | B |
+| 2026-11-15 | `risk_level` value `unknown` for sols with missing REMS inputs (was `green`); route verdict CAUTION "No weather data for sol N" | B, C data |

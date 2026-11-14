@@ -49,7 +49,8 @@ export interface RouteResponse {
 }
 
 export type UvIndex = 'low' | 'moderate' | 'high' | 'very_high'
-export type RiskLevel = 'green' | 'yellow' | 'red'
+/** 'unknown': a measurement the risk rule needs is missing; never shown as safe. */
+export type RiskLevel = 'green' | 'yellow' | 'red' | 'unknown'
 
 export interface Conditions {
   sol: number
