@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { RiskLevel } from '../api/types'
 import { useAppStore } from '../store/useAppStore'
 import { fmt, titleCase } from './format'
@@ -35,57 +34,12 @@ function Stat({ label, value, title }: { label: string; value: string; title?: s
 export function ConditionsPanel() {
   const conditions = useAppStore((s) => s.conditions)
   const state = useAppStore((s) => s.conditionsState)
-  const sol = useAppStore((s) => s.sol)
-  const loadConditions = useAppStore((s) => s.loadConditions)
-  const [draft, setDraft] = useState('')
-
-  const goTo = (value: number) => {
-    if (Number.isFinite(value) && value >= 0) void loadConditions(Math.round(value))
-  }
 
   return (
     <section
       aria-label="Surface conditions"
       className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl bg-stone-900/80 px-4 py-3 ring-1 ring-white/10"
     >
-      <div className="flex items-center gap-2">
-        <span className="text-xs uppercase tracking-wide text-stone-400">Sol</span>
-        <button
-          type="button"
-          className="rounded px-2 py-1 text-stone-300 hover:bg-white/10 disabled:opacity-40"
-          disabled={sol === null || state === 'loading'}
-          onClick={() => sol !== null && goTo(sol - 1)}
-          aria-label="Previous sol"
-        >
-          ‹
-        </button>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            goTo(Number(draft))
-            setDraft('')
-          }}
-        >
-          <input
-            className="w-20 rounded bg-stone-800 px-2 py-1 text-center text-sm text-stone-100 ring-1 ring-white/10 focus:outline-none focus:ring-orange-400"
-            inputMode="numeric"
-            placeholder={sol === null ? '…' : String(sol)}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
-            aria-label="Go to sol"
-          />
-        </form>
-        <button
-          type="button"
-          className="rounded px-2 py-1 text-stone-300 hover:bg-white/10 disabled:opacity-40"
-          disabled={sol === null || state === 'loading'}
-          onClick={() => sol !== null && goTo(sol + 1)}
-          aria-label="Next sol"
-        >
-          ›
-        </button>
-      </div>
-
       {state === 'error' && !conditions && (
         <p className="text-sm text-red-300">Conditions are unavailable right now.</p>
       )}

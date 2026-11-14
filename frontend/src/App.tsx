@@ -5,9 +5,10 @@ import { EvaPanel } from './panels/EvaPanel'
 import { LayerControls } from './panels/LayerControls'
 import { PoiCard } from './panels/PoiCard'
 import { ProfileChart } from './panels/ProfileChart'
+import { Header } from './layout/Header'
 import { useAppStore } from './store/useAppStore'
 
-// The science goal of the EVA, shown under the title (also in README.md).
+// The science goal of the EVA, shown in the side panel (also in README.md).
 const MISSION_GOAL =
   'Walk from the crew base at Bradbury Landing to the layered rocks of Mount Sharp’s foothills ' +
   'and sample them in order — lake mudstones, clay-bearing and sulfate-bearing units — to trace ' +
@@ -17,24 +18,9 @@ const MISSION_GOAL =
 // CesiumJS is ~4 MB: load the 3D map separately so the panels appear at once.
 const MapView = lazy(() => import('./map/MapView'))
 
-function Badge({ children, title }: { children: string; title: string }) {
-  return (
-    <span
-      title={title}
-      className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/40"
-    >
-      {children}
-    </span>
-  )
-}
-
 export default function App() {
   const init = useAppStore((s) => s.init)
-  const offline = useAppStore((s) => s.offline)
-  const connecting = useAppStore((s) => s.connecting)
-  const connectionLost = useAppStore((s) => s.connectionLost)
   const startHeartbeat = useAppStore((s) => s.startHeartbeat)
-  const terrain = useAppStore((s) => s.health?.terrain)
 
   useEffect(() => {
     void init()
@@ -43,65 +29,42 @@ export default function App() {
   useEffect(() => startHeartbeat(), [startHeartbeat])
 
   return (
-    <div className="flex min-h-dvh flex-col gap-3 bg-stone-950 p-3 text-stone-100 lg:h-dvh">
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-bold tracking-tight">
-          Martian Map <span className="font-normal text-stone-400">· Gale crater EVA planner</span>
-        </h1>
-        {connecting && (
-          <Badge title="The free-tier server sleeps when idle; the first request can take up to a minute.">
-            Waking up the server…
-          </Badge>
-        )}
-        {connectionLost && (
-          <span
-            title="The route server stopped answering. Shown values are the last known ones and may be outdated."
-            className="rounded-full bg-fuchsia-500/20 px-2.5 py-0.5 text-xs font-semibold text-fuchsia-200 ring-1 ring-fuchsia-400/60"
-          >
-            Connection lost
-          </span>
-        )}
-        {offline && !connecting && !connectionLost && (
-          <Badge title="The server is unreachable; showing precomputed demo routes and bundled data.">
-            Offline demo
-          </Badge>
-        )}
-        {terrain === 'synthetic' && (
-          <Badge title="Routes are planned on generated test terrain, not the real elevation map.">
-            Synthetic terrain
-          </Badge>
-        )}
-      </header>
-
-      <p className="-mt-1 max-w-5xl text-xs leading-snug text-stone-400">
-        <span className="font-semibold uppercase tracking-wide text-orange-300">Mission goal · </span>
-        {MISSION_GOAL}
-      </p>
-
-      <ConditionsPanel />
-
-      <main className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[1fr_20rem] lg:grid-rows-[1fr_14rem]">
-        <div className="min-h-[50vh] overflow-hidden rounded-xl bg-stone-900 ring-1 ring-white/10 lg:min-h-0">
+    <div className="flex min-h-dvh flex-col bg-bg text-text lg:h-dvh">
+      <Header />
+      <div className="flex min-h-0 flex-1 flex-wrap">
+        <section
+          aria-label="3D map of the route"
+          className="relative h-[70dvh] min-w-0 flex-[999_1_560px] overflow-hidden lg:h-full"
+        >
           <Suspense
-            fallback={<div className="flex h-full items-center justify-center text-sm text-stone-500">Loading 3D map…</div>}
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-muted">Loading 3D map…</div>
+            }
           >
             <MapView />
           </Suspense>
-        </div>
-        <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto lg:row-span-2">
+        </section>
+        <aside
+          aria-label="EVA plan"
+          className="flex min-w-0 flex-[1_1_var(--size-panel)] flex-col gap-4 border-l border-line p-6 lg:h-full lg:max-w-[440px] lg:overflow-y-auto"
+        >
           <EvaPanel />
           <CopilotPanel />
           <PoiCard />
+          <ConditionsPanel />
           <LayerControls />
+          <div className="h-56 shrink-0">
+            <ProfileChart />
+          </div>
+          <section aria-label="Mission goal" className="text-xs leading-snug text-muted">
+            <span className="font-mono text-label uppercase text-muted">Mission goal · </span>
+            {MISSION_GOAL}
+          </section>
+          <footer className="text-[11px] text-unknown">
+            NASA Space Apps Challenge 2026 · SNRG Force · Data: NASA/JPL-Caltech, USGS, Curiosity REMS and RAD
+          </footer>
         </aside>
-        <div className="h-56 lg:h-auto">
-          <ProfileChart />
-        </div>
-      </main>
-
-      <footer className="text-[11px] text-stone-500">
-        NASA Space Apps Challenge 2026 · SNRG Force · Data: NASA/JPL-Caltech, Curiosity REMS and RAD
-      </footer>
+      </div>
     </div>
   )
 }
