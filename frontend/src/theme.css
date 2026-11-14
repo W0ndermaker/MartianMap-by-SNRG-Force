@@ -10,7 +10,7 @@
  * caution 10.5, alert 5.4, route 10.6 — all >= 4.5:1. Text on an alert fill uses bg (5.4:1);
  * white on alert would be 3.6:1.
  */
-@theme {
+@theme static {
   --color-bg: #0b0f14; /* page, panels, dark halo around marks on the terrain */
   --color-card: #121820; /* cards */
   --color-glass: rgb(11 15 20 / 0.72); /* panels over the map, with backdrop blur */
@@ -23,6 +23,7 @@
   --color-route: #22d3ee; /* route and the primary action */
   --color-route-hover: #67e8f9;
   --color-white: #ffffff; /* straight-line dashes on the map */
+  --color-mars: #4a2416; /* bare globe under the imagery: terrain only, never in the interface */
 
   /* Safety status only. */
   --color-go: #34d27b;

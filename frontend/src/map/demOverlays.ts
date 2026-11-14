@@ -2,9 +2,13 @@
 // Slope uses central differences on the ~10 m grid, so it is a ~20 m baseline slope: it smooths
 // boulder-scale steepness (stated in the legend).
 
-import { Rectangle, SingleTileImageryProvider } from 'cesium';
+import { Color, Rectangle, SingleTileImageryProvider } from 'cesium';
 import { MARS_RADIUS_M } from './mars';
 import type { HeightGrid } from './terrain';
+import { token } from '../theme';
+
+/** Opacity of the no-go fill, 0-255. */
+const NO_GO_ALPHA = 190;
 
 export interface ColorStop { at: number; rgb: [number, number, number] }
 
@@ -113,10 +117,13 @@ export function slopeOverlay(g: HeightGrid) {
 
 /** Cells steeper than the max-slope limit (impassable for the route planner), red; everything else clear. */
 export function noGoOverlay(g: HeightGrid, maxSlopeDeg: number) {
+  // Impassable cells: the alert token (src/theme.css), translucent over the imagery.
+  const alert = Color.fromCssColorString(token('alert'));
+  const noGo = [alert.red * 255, alert.green * 255, alert.blue * 255, NO_GO_ALPHA];
   const slope = slopeDegrees(g);
   const rgba = new Uint8ClampedArray(g.width * g.height * 4);
   for (let i = 0; i < slope.length; i++) {
-    if (slope[i] > maxSlopeDeg) rgba.set([229, 42, 42, 190], i * 4);
+    if (slope[i] > maxSlopeDeg) rgba.set(noGo, i * 4);
   }
   return toProvider(g, rgba);
 }

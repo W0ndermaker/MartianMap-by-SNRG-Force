@@ -13,6 +13,7 @@ export type ColorToken =
   | 'caution'
   | 'alert'
   | 'unknown'
+  | 'mars'
 
 const cache = new Map<ColorToken, string>()
 

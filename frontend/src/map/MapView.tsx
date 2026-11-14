@@ -5,7 +5,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BoundingSphere,
-  Cartesian2,
   Cartesian3,
   Cartographic,
   Cesium3DTileset,
@@ -19,7 +18,6 @@ import {
   ImageryLayer,
   ImageryLayerCollection,
   Ion,
-  LabelStyle,
   Math as CMath,
   Matrix4,
   PolylineDashMaterialProperty,
@@ -29,6 +27,9 @@ import {
   VerticalOrigin,
   Viewer,
   defined,
+  DirectionalLight,
+  PolylineGlowMaterialProperty,
+  Transforms,
   type Entity,
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
@@ -39,6 +40,7 @@ import { offlineDemoPairs } from '../api/offline';
 import type { LonLat, TraverseCollection } from '../api/types';
 import { useAppStore } from '../store/useAppStore';
 import { useCopilotStore } from '../store/useCopilotStore';
+import { levelStatus } from '../ui/levels';
 import { elevationOverlay, noGoOverlay, slopeOverlay } from './demOverlays';
 import { startFlyover } from './flyover';
 import { useMapStore, type MapLayerId } from './mapStore';
@@ -54,14 +56,21 @@ import {
   trekProvider,
 } from './mars';
 import {
-  bandRuns,
   bearing,
   cumulative,
   pointAtDistance,
   straightLine,
   type LonLatElev,
-  type SlopeBand,
 } from './routeGeometry';
+import {
+  baseIcon,
+  cesiumColor,
+  hazardIcon,
+  labelGraphics,
+  pinIcon,
+  startIcon,
+  VERTICAL_EXAGGERATION,
+} from './style';
 import { createLocalTerrain, type LocalTerrain } from './terrain';
 
 /** Cesium ion asset id of "Cesium Mars" (secondary source: Cesium Sandcastle "Mars" example; verify in your ion account). */
@@ -72,58 +81,6 @@ const ION_TOKEN = (import.meta.env.VITE_CESIUM_ION_TOKEN ?? '').trim();
 RequestScheduler.requestsByServer['trek.nasa.gov:443'] = 40;
 
 export type TerrainMode = 'local' | 'ion';
-
-const BAND_COLOR: Record<SlopeBand, Color> = {
-  low: Color.fromCssColorString('#2ea043'),
-  mid: Color.fromCssColorString('#f0b429'),
-  high: Color.fromCssColorString('#e5484d'),
-};
-
-const POI_COLOR: Record<string, string> = { science: '#a371f7', base: '#3fb6ff', rover_stop: '#f7a94b' };
-
-function svgIcon(svg: string): string {
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
-}
-
-const HAZARD_ICON = svgIcon(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="26" viewBox="0 0 28 26">' +
-    '<path d="M14 1 L27 25 H1 Z" fill="#e5484d" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
-    '<rect x="12.6" y="8" width="2.8" height="9" rx="1.2" fill="#fff"/><circle cx="14" cy="20.6" r="1.6" fill="#fff"/></svg>',
-);
-
-function poiIcon(kind: string): string {
-  const c = POI_COLOR[kind] ?? '#cccccc';
-  const letter = kind === 'science' ? 'S' : kind === 'base' ? 'B' : 'R';
-  return svgIcon(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="38" viewBox="0 0 30 38">` +
-      `<path d="M15 37 C15 37 2 22 2 14 A13 13 0 0 1 28 14 C28 22 15 37 15 37 Z" fill="${c}" stroke="#fff" stroke-width="2"/>` +
-      `<text x="15" y="19" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">${letter}</text></svg>`,
-  );
-}
-
-function endpointIcon(label: 'A' | 'B'): string {
-  const c = label === 'A' ? '#3fb950' : '#58a6ff';
-  return svgIcon(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">` +
-      `<circle cx="15" cy="15" r="12" fill="${c}" stroke="#fff" stroke-width="3"/>` +
-      `<text x="15" y="20" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">${label}</text></svg>`,
-  );
-}
-
-function labelGraphics(text: string, offsetY = -34) {
-  return {
-    text,
-    font: '600 13px "JetBrains Mono", ui-monospace, monospace',
-    fillColor: Color.WHITE,
-    outlineColor: Color.BLACK,
-    outlineWidth: 3,
-    style: LabelStyle.FILL_AND_OUTLINE,
-    pixelOffset: new Cartesian2(0, offsetY),
-    heightReference: HeightReference.CLAMP_TO_GROUND,
-    disableDepthTestDistance: Number.POSITIVE_INFINITY,
-    showBackground: false,
-  };
-}
 
 /** Joins consecutive drive segments of the traverse file into continuous lines (fewer ground polylines). */
 function traverseChains(fc: TraverseCollection): LonLat[][] {
@@ -142,6 +99,43 @@ function traverseChains(fc: TraverseCollection): LonLat[][] {
 
 /** Ring pieces shorter than this share of the ring's main line are not drawn. */
 const RING_MIN_SHARE = 0.15;
+
+/** Height the exaggeration is relative to: the crater floor near the base, meters. */
+const EXAGGERATION_BASE_M = -4500;
+/** Sun direction for the scene light: azimuth from north and elevation above the horizon, degrees. */
+const SUN_AZIMUTH_DEG = 290;
+const SUN_ELEVATION_DEG = 25;
+
+/** The safe route as in the mock-up: a wide dark line under a glowing route-colored line. */
+function addRouteLines(ds: CustomDataSource, positions: Cartesian3[]) {
+  ds.entities.add({ polyline: { positions, clampToGround: true, width: 14, material: cesiumColor('bg', 0.7) } });
+  ds.entities.add({
+    polyline: {
+      positions,
+      clampToGround: true,
+      width: 16,
+      material: new PolylineGlowMaterialProperty({ color: cesiumColor('route', 0.7), glowPower: 0.2, taperPower: 1 }),
+    },
+  });
+  ds.entities.add({ polyline: { positions, clampToGround: true, width: 5, material: cesiumColor('route') } });
+}
+
+/** Height of a point as drawn: terrain exaggeration applied around EXAGGERATION_BASE_M. */
+function exaggerated(h: number): number {
+  return EXAGGERATION_BASE_M + (h - EXAGGERATION_BASE_M) * VERTICAL_EXAGGERATION;
+}
+
+/** A directional light from a low sun over the site (east-north-up frame at the given point). */
+function lowSunLight(at: LonLat): DirectionalLight {
+  const origin = lonLatToCartesian(at, 0);
+  const enu = Transforms.eastNorthUpToFixedFrame(origin, MARS_SPHERE);
+  const az = CMath.toRadians(SUN_AZIMUTH_DEG);
+  const el = CMath.toRadians(SUN_ELEVATION_DEG);
+  // Vector toward the sun in the local frame, then the light travels the opposite way.
+  const toSun = new Cartesian3(Math.sin(az) * Math.cos(el), Math.cos(az) * Math.cos(el), Math.sin(el));
+  const world = Matrix4.multiplyByPointAsVector(enu, toSun, new Cartesian3());
+  return new DirectionalLight({ direction: Cartesian3.normalize(Cartesian3.negate(world, world), world) });
+}
 
 interface GeoJsonRings {
   type: 'FeatureCollection';
@@ -219,14 +213,21 @@ export default function MapView() {
     });
     viewerRef.current = viewer;
     const scene = viewer.scene;
-    scene.backgroundColor = Color.fromCssColorString('#05060a');
+    scene.backgroundColor = cesiumColor('bg');
     if (scene.skyAtmosphere) scene.skyAtmosphere.show = false;
     scene.globe.showGroundAtmosphere = false;
-    scene.globe.baseColor = Color.fromCssColorString('#5a3a28');
+    scene.globe.baseColor = cesiumColor('mars');
     scene.globe.depthTestAgainstTerrain = true;
     scene.globe.maximumScreenSpaceError = 1.5;
     scene.fog.enabled = false;
     scene.screenSpaceCameraController.minimumZoomDistance = 30;
+    // Terrain exaggerated (labelled on the map) around the crater floor, lit by a low sun from
+    // the west-northwest so long shadows show the relief.
+    scene.verticalExaggeration = VERTICAL_EXAGGERATION;
+    scene.verticalExaggerationRelativeHeight = EXAGGERATION_BASE_M;
+    scene.globe.enableLighting = true;
+    scene.globe.dynamicAtmosphereLighting = false;
+    scene.light = lowSunLight(BOXWORK_ANCHOR);
 
     // Trackpad pinch: Safari sends WebKit gesture events, Chrome/Firefox send ctrl+wheel. Cesium ignores both
     // (and Safari would zoom the whole page), so turn them into camera zoom here.
@@ -343,10 +344,10 @@ export default function MapView() {
     const b = useAppStore.getState().health?.bounds;
     if (!viewer) return;
     const center: LonLat = b ? [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2] : BOXWORK_ANCHOR;
-    const h = terrainRef.current?.heightAt(toCesiumLon(center[0]), center[1]) ?? -4000;
+    const h = exaggerated(terrainRef.current?.heightAt(toCesiumLon(center[0]), center[1]) ?? EXAGGERATION_BASE_M);
     const radius = b ? Math.max(b[2] - b[0], b[3] - b[1]) * 59270 * 0.6 : 6000;
     viewer.camera.flyToBoundingSphere(new BoundingSphere(lonLatToCartesian(center, h), radius), {
-      offset: new HeadingPitchRange(CMath.toRadians(15), CMath.toRadians(-38), radius * 2.1),
+      offset: new HeadingPitchRange(CMath.toRadians(15), CMath.toRadians(-30), radius * 2.1),
       duration,
     });
   }, []);
@@ -368,12 +369,12 @@ export default function MapView() {
         positions: ring.map((p) => lonLatToCartesian(p)),
         clampToGround: true,
         width: 3,
-        material: new PolylineDashMaterialProperty({ color: Color.fromCssColorString('#ffd166'), dashLength: 24 }),
+        material: new PolylineDashMaterialProperty({ color: cesiumColor('text', 0.45), dashLength: 24 }),
       },
     });
     ds.entities.add({
       position: lonLatToCartesian([w, n]),
-      label: { ...labelGraphics('Working area', -14), horizontalOrigin: 1 },
+      label: { ...labelGraphics('WORKING AREA', -14, 'muted'), horizontalOrigin: 1 },
     });
   }, [bounds, viewerReady]);
 
@@ -417,19 +418,28 @@ export default function MapView() {
     const ds = sources.current.points;
     if (!ds) return;
     ds.entities.removeAll();
-    const add = (p: LonLat, label: 'A' | 'B', text: string) =>
+    const isPoi = (p: LonLat) =>
+      (poi?.features ?? []).some(
+        (f) => Math.abs(f.geometry.coordinates[0] - p[0]) < 1e-6 && Math.abs(f.geometry.coordinates[1] - p[1]) < 1e-6,
+      );
+    if (start && !isPoi(start))
       ds.entities.add({
-        position: lonLatToCartesian(p),
+        position: lonLatToCartesian(start),
+        billboard: { image: startIcon(), heightReference: HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        label: labelGraphics('START', -24),
+      });
+    if (goal && !isPoi(goal))
+      ds.entities.add({
+        position: lonLatToCartesian(goal),
         billboard: {
-          image: endpointIcon(label),
+          image: pinIcon('route'),
+          verticalOrigin: VerticalOrigin.BOTTOM,
           heightReference: HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
-        label: labelGraphics(text, -26),
+        label: labelGraphics('GOAL', -50),
       });
-    if (start) add(start, 'A', 'Start');
-    if (goal) add(goal, 'B', 'Goal');
-  }, [start, goal, viewerReady]);
+  }, [start, goal, poi, viewerReady]);
 
   // ---------- POI markers ----------
   useEffect(() => {
@@ -439,21 +449,26 @@ export default function MapView() {
     ds.show = layers.poi;
     for (const f of poi?.features ?? []) {
       const pr = f.properties;
+      const c = f.geometry.coordinates;
+      const isGoal = !!goal && Math.abs(goal[0] - c[0]) < 1e-6 && Math.abs(goal[1] - c[1]) < 1e-6;
       const selected = pr.id === selectedPoiId;
+      const base = pr.kind === 'base';
       ds.entities.add({
-        position: lonLatToCartesian(f.geometry.coordinates),
-        billboard: {
-          image: poiIcon(pr.kind),
-          verticalOrigin: VerticalOrigin.BOTTOM,
-          heightReference: HeightReference.CLAMP_TO_GROUND,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          scale: selected ? 1.25 : 1,
-        },
-        label: { ...labelGraphics(pr.name, selected ? -52 : -44), fillColor: selected ? Color.YELLOW : Color.WHITE },
+        position: lonLatToCartesian(c),
+        billboard: base
+          ? { image: baseIcon(), heightReference: HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY }
+          : {
+              image: pinIcon(isGoal || selected ? 'route' : 'muted'),
+              verticalOrigin: VerticalOrigin.BOTTOM,
+              heightReference: HeightReference.CLAMP_TO_GROUND,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              scale: selected || isGoal ? 1.15 : 1,
+            },
+        label: labelGraphics(base ? 'BASE' : pr.name.toUpperCase(), base ? -30 : -52, isGoal || selected || base ? 'text' : 'text-2'),
         properties: { poiId: pr.id },
       });
     }
-  }, [poi, selectedPoiId, layers.poi, viewerReady]);
+  }, [poi, selectedPoiId, goal, layers.poi, viewerReady]);
 
   // ---------- route line coloured by slope ----------
   useEffect(() => {
@@ -467,24 +482,19 @@ export default function MapView() {
     const coords = route?.status === 'ok' ? route.path?.coordinates : null;
     if (!coords || coords.length < 2) return;
     const all = coords.map((c) => lonLatToCartesian(c));
-    ds.entities.add({ polyline: { positions: all, clampToGround: true, width: 13, material: Color.BLACK.withAlpha(0.45) } });
-    for (const run of bandRuns(coords, route?.profile ?? [], maxSlopeDeg)) {
-      ds.entities.add({
-        polyline: { positions: run.coords.map((c) => lonLatToCartesian(c)), clampToGround: true, width: 8, material: BAND_COLOR[run.band] },
-      });
-    }
+    addRouteLines(ds, all);
     for (const h of route?.hazards ?? []) {
       hz.entities.add({
         position: lonLatToCartesian(h.position),
         billboard: {
-          image: HAZARD_ICON,
+          image: hazardIcon(),
           verticalOrigin: VerticalOrigin.BOTTOM,
           heightReference: HeightReference.CLAMP_TO_GROUND,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         // text only when zoomed in, so it does not cover Start/Goal in overview
         label: {
-          ...labelGraphics(`${h.note} (${h.value.toFixed(1)}°)`, -30),
+          ...labelGraphics(`${h.note.toUpperCase()} · ${h.value.toFixed(1)}°`, -34),
           font: '600 12px "JetBrains Mono", ui-monospace, monospace',
           distanceDisplayCondition: new DistanceDisplayCondition(0, 2500),
         },
@@ -496,15 +506,15 @@ export default function MapView() {
     if (viewer && !stopFlyRef.current && framedRouteRef.current !== route) {
       framedRouteRef.current = route;
       const sphere = BoundingSphere.fromPoints(
-        coords.map((c) => lonLatToCartesian(c, terrainRef.current?.heightAt(toCesiumLon(c[0]), c[1]) ?? c[2])),
+        coords.map((c) => lonLatToCartesian(c, exaggerated(terrainRef.current?.heightAt(toCesiumLon(c[0]), c[1]) ?? c[2]))),
       );
       const r = Math.max(250, sphere.radius);
       viewer.camera.flyToBoundingSphere(sphere, {
-        offset: new HeadingPitchRange(viewer.camera.heading, CMath.toRadians(-45), r * 3.6),
+        offset: new HeadingPitchRange(viewer.camera.heading, CMath.toRadians(-32), r * 3.6),
         duration: 1.4,
       });
     }
-  }, [route, maxSlopeDeg, layers.route, layers.hazards, viewerReady]);
+  }, [route, layers.route, layers.hazards, viewerReady]);
 
   // ---------- straight line vs route: what walking straight to the goal would cross ----------
   const setStraight = useMapStore((s) => s.setStraight);
@@ -522,18 +532,28 @@ export default function MapView() {
     const line = straightLine(start, goal, heightAt, maxSlopeDeg, health?.cell_size_m ?? 10);
     setStraight({ steepM: line.steepM, maxSlopeDeg: line.maxSlopeDeg, lengthM: line.lengthM });
     ds.show = layers.straight;
+    let labelled = false;
     for (const run of line.runs) {
       if (run.coords.length < 2) continue;
       ds.entities.add({
         polyline: {
           positions: run.coords.map((c) => lonLatToCartesian(c)),
           clampToGround: true,
-          width: run.steep ? 7 : 3,
-          material: run.steep
-            ? Color.fromCssColorString('#e879f9')
-            : new PolylineDashMaterialProperty({ color: Color.WHITE.withAlpha(0.7), dashLength: 16 }),
+          width: run.steep ? 4 : 3,
+          material: new PolylineDashMaterialProperty({
+            color: run.steep ? cesiumColor('alert') : cesiumColor('white', 0.55),
+            gapColor: run.steep ? cesiumColor('bg', 0.6) : Color.TRANSPARENT,
+            dashLength: 16,
+          }),
         },
       });
+      if (run.steep && !labelled) {
+        labelled = true;
+        ds.entities.add({
+          position: lonLatToCartesian(run.coords[Math.floor(run.coords.length / 2)]),
+          label: labelGraphics(`STRAIGHT: ${Math.round(line.maxSlopeDeg)}° SLOPE`, -20, 'alert'),
+        });
+      }
     }
   }, [route, start, goal, maxSlopeDeg, layers.straight, elevRange, viewerReady, health, setStraight]);
 
@@ -569,9 +589,9 @@ export default function MapView() {
     const feats = reachData.features.slice(0, ringsShown);
     feats.forEach((f, i) => {
       const walkback = f.properties.kind === 'walkback';
-      const color = walkback
-        ? Color.WHITE
-        : Color.fromCssColorString('#22d3ee').withAlpha(0.95 - (0.45 * i) / Math.max(1, feats.length));
+      // Inner rings fade outward; the walk-back limit is the strongest line.
+      const alpha = walkback ? 0.75 : 0.6 - (0.2 * i) / Math.max(1, feats.length);
+      const color = new PolylineDashMaterialProperty({ color: cesiumColor('text', alpha), dashLength: 12 });
       let longest: [number, number][] = [];
       for (const line of f.geometry.coordinates) if (line.length > longest.length) longest = line;
       // Draw the main boundary and big lobes only; small islands around single knobs are noise here.
@@ -581,7 +601,7 @@ export default function MapView() {
           polyline: {
             positions: line.map((c) => lonLatToCartesian(c)),
             clampToGround: true,
-            width: walkback ? 5 : 3,
+            width: walkback ? 3 : 2,
             material: color,
           },
         });
@@ -590,10 +610,7 @@ export default function MapView() {
         const at = longest[Math.floor(longest.length * 0.35)];
         ds.entities.add({
           position: lonLatToCartesian(at),
-          label: {
-            ...labelGraphics(walkback ? 'Walk-back limit' : f.properties.label, -10),
-            fillColor: walkback ? Color.WHITE : Color.fromCssColorString('#a5f3fc'),
-          },
+          label: labelGraphics(walkback ? 'WALK-BACK LIMIT' : f.properties.label.toUpperCase(), -10),
         });
       }
     });
@@ -623,24 +640,32 @@ export default function MapView() {
     }
     const steps = copilotScenario.steps;
     const step = steps[Math.min(copilotIndex, steps.length - 1)];
-    const line = (coords: [number, number, number][], css: string, width: number) =>
+    const positions = (coords: [number, number, number][]) => coords.map((c) => lonLatToCartesian(c));
+    const activeRoute = (coords: [number, number, number][]) => addRouteLines(ds, positions(coords));
+    if (step.phase === 'back' && copilotScenario.return_path) {
+      // After the turn the leg to the target fades out; the way back is the active route.
       ds.entities.add({
-        polyline: { positions: coords.map((c) => lonLatToCartesian(c)), clampToGround: true, width, material: Color.fromCssColorString(css) },
+        polyline: {
+          positions: positions(copilotScenario.outbound_path.coordinates),
+          clampToGround: true,
+          width: 4,
+          material: new PolylineDashMaterialProperty({ color: cesiumColor('text', 0.35), dashLength: 10 }),
+        },
       });
-    line(copilotScenario.outbound_path.coordinates, '#22d3ee', 6);
-    if (step.phase === 'back' && copilotScenario.return_path) line(copilotScenario.return_path.coordinates, '#e879f9', 7);
-    const level = step.copilot.level;
+      activeRoute(copilotScenario.return_path.coordinates);
+    } else activeRoute(copilotScenario.outbound_path.coordinates);
+    const status = levelStatus(step.copilot.level);
     ds.entities.add({
       position: lonLatToCartesian(step.position),
       point: {
-        pixelSize: 16,
-        color: level === 'go' ? Color.CYAN : level === 'caution' ? Color.fromCssColorString('#fef9c3') : Color.fromCssColorString('#e879f9'),
-        outlineColor: Color.BLACK,
+        pixelSize: 20,
+        color: cesiumColor(status),
+        outlineColor: cesiumColor('bg'),
         outlineWidth: 3,
         heightReference: HeightReference.CLAMP_TO_GROUND,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
-      label: labelGraphics(`Astronaut · O₂ ${Math.round(step.o2_pct)} %`, -22),
+      label: labelGraphics(`YOU · EVA-1 · O2 ${Math.round(step.o2_pct)} %`, -26),
     });
 
     // Chase camera: low behind the astronaut, looking along the walk.
@@ -654,7 +679,7 @@ export default function MapView() {
       chaseHeading.current += delta * 0.25;
     }
     const t = terrainRef.current;
-    const ground = t?.heightAt(toCesiumLon(step.position[0]), step.position[1]) ?? -4500;
+    const ground = exaggerated(t?.heightAt(toCesiumLon(step.position[0]), step.position[1]) ?? EXAGGERATION_BASE_M);
     viewer.camera.lookAt(
       lonLatToCartesian(step.position, ground + 2),
       new HeadingPitchRange(chaseHeading.current, CMath.toRadians(-22), 420),
@@ -779,9 +804,9 @@ export default function MapView() {
       .then((r) => r.json() as Promise<TraverseCollection>)
       .then((fc) => {
         if (cancelled) return;
-        const color = Color.fromCssColorString('#ff7b39');
+        const color = cesiumColor('text-2', 0.45);
         for (const chain of traverseChains(fc)) {
-          ds.entities.add({ polyline: { positions: chain.map((p) => lonLatToCartesian(p)), clampToGround: true, width: 3, material: color } });
+          ds.entities.add({ polyline: { positions: chain.map((p) => lonLatToCartesian(p)), clampToGround: true, width: 2, material: color } });
         }
       })
       .catch(() => setNotice('Curiosity traverse file could not be loaded.'));
@@ -809,7 +834,12 @@ export default function MapView() {
     setFlying(true);
     const t = terrainRef.current;
     stopFlyRef.current = startFlyover(viewer, coords, {
-      heightAt: t ? (lon, lat) => t.heightAt(toCesiumLon(lon), lat) : undefined,
+      heightAt: t
+        ? (lon, lat) => {
+            const h = t.heightAt(toCesiumLon(lon), lat);
+            return h == null ? null : exaggerated(h);
+          }
+        : undefined,
       onEnd: () => {
         stopFlyRef.current = null;
         setFlying(false);
