@@ -227,3 +227,33 @@ def test_route_line_starts_and_ends_at_the_requested_points():
     coords = data["path"]["coordinates"]
     assert coords[0][:2] == pytest.approx(start)
     assert coords[-1][:2] == pytest.approx(goal)
+
+
+def test_route_has_round_trip_and_verdict():
+    data = _route()
+    assert data["verdict"] in ("go", "caution", "no_go")
+    assert data["round_trip_o2_used_pct"] == pytest.approx(
+        data["o2_used_pct"] + data["return_o2_used_pct"], abs=0.11
+    )
+    assert data["o2_reserve_pct"] == pytest.approx(100 - data["round_trip_o2_used_pct"], abs=0.11)
+    assert data["verdict_reasons"]
+
+
+def test_route_red_sol_is_no_go():
+    red_sol = next(r["sol"] for r in _all_conditions() if r["risk_level"] == "red")
+    data = _route(sol=red_sol)
+    assert data["verdict"] == "no_go"
+    assert any(f"sol {red_sol}" in r for r in data["verdict_reasons"])
+
+
+def test_route_without_sol_ignores_weather():
+    data = _route()
+    assert not any("sol" in r for r in data["verdict_reasons"])
+
+
+def _all_conditions():
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "app" / "data" / "conditions.json"
+    return json.loads(path.read_text(encoding="utf-8"))

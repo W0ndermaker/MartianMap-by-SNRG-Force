@@ -26,6 +26,7 @@ Builds a route between two points.
 | `goal` | `[number, number]` | yes | Goal point |
 | `max_slope_deg` | number | no, default 20 | Maximum slope; anything steeper is impassable |
 | `speed_flat_m_s` | number | no, default 1.0 | Speed on flat ground |
+| `sol` | integer | no | Sol whose surface conditions feed the verdict (nearest sol with data); without it the weather is not part of the verdict |
 
 ```json
 {
@@ -51,6 +52,14 @@ Builds a route between two points.
 | `descent_m` | number | Total elevation loss |
 | `profile` | array | Profile points, at most 300 |
 | `hazards` | array | Hazardous sections |
+| `return_duration_min` | number or null | Time of the way back (goal → start, planned separately) |
+| `return_o2_used_pct` | number or null | Oxygen share of the way back |
+| `round_trip_o2_used_pct` | number or null | Out and back together |
+| `o2_reserve_pct` | number or null | 100 − round trip; negative means the supply is not enough |
+| `verdict` | string | `go`, `caution` or `no_go` |
+| `verdict_reasons` | array of strings | Short English reasons for the interface, most important first |
+
+Verdict rule: `no_go` if there is no way back, the round trip needs more than 100 % of the supply, or the sol risk is `red`; `caution` if the route out or back has hazards or the sol risk is `yellow`; otherwise `go`. The new fields are present only when `status` is `ok`; older clients may ignore them.
 
 `profile` element: `{"dist_m": number, "elev_m": number, "slope_deg": number}`.
 
@@ -72,6 +81,12 @@ Builds a route between two points.
   "hazards": [
     {"type": "steep_slope", "position": [137.4301, -4.6012], "value": 17.4, "note": "Steep section, 40 m"}
   ],
+  "return_duration_min": 41,
+  "return_o2_used_pct": 19,
+  "round_trip_o2_used_pct": 40,
+  "o2_reserve_pct": 60,
+  "verdict": "caution",
+  "verdict_reasons": ["Round trip uses 40 % of the oxygen supply, 60 % left", "1 steep section near the slope limit"],
   "status": "ok"
 }
 ```
@@ -162,3 +177,4 @@ Service request for checking a deployment.
 | --- | --- | --- |
 | 2026-11-14 | First version; added `GET /api/health` | B |
 | 2026-11-14 | `reason`, `note`, `name`, `description` texts switched to English per the submission rules | B |
+| 2026-11-14 | Optional `sol` in the route request; round trip, oxygen reserve and `verdict` / `verdict_reasons` in the route response (backward compatible). Needs A and C sign-off | B |

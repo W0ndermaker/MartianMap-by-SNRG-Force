@@ -18,3 +18,9 @@
 ## Result on the current data
 
 4745 sols: 3588 green, 1147 yellow, 10 red (all red days come from very cold nights).
+
+**Caveat on the red days:** all 10 have a minimum of exactly −100 °C. That looks like the lower limit of the reported values rather than a measured extreme, so these sols are flagged in the interface as "may be the sensor limit". They stay red: we cannot tell that the night was warmer.
+
+## Effect on the route
+
+The route verdict (`POST /api/route` with `sol`) uses this level: red makes the EVA No-Go, yellow makes it Caution. The weather does not change walking time or oxygen use (no sourced coefficient for that).

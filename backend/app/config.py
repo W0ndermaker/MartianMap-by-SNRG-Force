@@ -32,5 +32,13 @@ def get_allowed_origins() -> list[str]:
 
 
 def get_dem_path() -> str:
-    """Return DEM_PATH (path to the prepared elevation GeoTIFF), or '' for synthetic terrain."""
-    return _get_setting("DEM_PATH")
+    """Return DEM_PATH (prepared elevation GeoTIFF), or '' for synthetic terrain.
+
+    A relative path is resolved against the backend folder, so scripts started from the
+    repository root find the same file as the server.
+    """
+    raw = _get_setting("DEM_PATH")
+    if not raw:
+        return ""
+    path = Path(raw)
+    return str(path if path.is_absolute() else ENV_FILE.parent / path)

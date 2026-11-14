@@ -6,6 +6,13 @@ import { PoiCard } from './panels/PoiCard'
 import { ProfileChart } from './panels/ProfileChart'
 import { useAppStore } from './store/useAppStore'
 
+// The science goal of the EVA, shown under the title (also in README.md).
+const MISSION_GOAL =
+  'Walk from the crew base at Bradbury Landing to the layered rocks of Mount Sharp’s foothills ' +
+  'and sample them in order — lake mudstones, clay-bearing and sulfate-bearing units — to trace ' +
+  'how Gale crater’s ancient lake stayed habitable and then dried out, within one EVA’s oxygen ' +
+  'budget, the slope a suited astronaut can walk, and the surface conditions of the sol.'
+
 // CesiumJS is ~4 MB: load the 3D map separately so the panels appear at once.
 const MapView = lazy(() => import('./map/MapView'))
 
@@ -23,6 +30,7 @@ function Badge({ children, title }: { children: string; title: string }) {
 export default function App() {
   const init = useAppStore((s) => s.init)
   const offline = useAppStore((s) => s.offline)
+  const connecting = useAppStore((s) => s.connecting)
   const terrain = useAppStore((s) => s.health?.terrain)
 
   useEffect(() => {
@@ -35,7 +43,12 @@ export default function App() {
         <h1 className="text-lg font-bold tracking-tight">
           Martian Map <span className="font-normal text-stone-400">· Gale crater EVA planner</span>
         </h1>
-        {offline && (
+        {connecting && (
+          <Badge title="The free-tier server sleeps when idle; the first request can take up to a minute.">
+            Waking up the server…
+          </Badge>
+        )}
+        {offline && !connecting && (
           <Badge title="The server is unreachable; showing precomputed demo routes and bundled data.">
             Offline demo
           </Badge>
@@ -46,6 +59,11 @@ export default function App() {
           </Badge>
         )}
       </header>
+
+      <p className="-mt-1 max-w-5xl text-xs leading-snug text-stone-400">
+        <span className="font-semibold uppercase tracking-wide text-orange-300">Mission goal · </span>
+        {MISSION_GOAL}
+      </p>
 
       <ConditionsPanel />
 

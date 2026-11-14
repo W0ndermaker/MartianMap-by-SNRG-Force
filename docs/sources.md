@@ -7,12 +7,12 @@ Format: `- Name — what we used it for — link — license (if known)`
 ## NASA data
 
 - Mars MSL Gale Merged DEM 1m (HRSC, CTX and HiRISE DEMs tied to MOLA) — elevation map of the working area, resampled to 10 m — https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m — USGS Astrogeology, public domain
-- Mars Trek WMTS, MRO HiRISE Curiosity roving site mosaic — base imagery (z16, ~0.6 m/px) — https://trek.nasa.gov/tiles/Mars/EQ/curiosity_hirise_mosaic — NASA/JPL/University of Arizona; NASA data, no copyright (assumption: NASA media guidelines)
+- Mars Trek WMTS, MRO HiRISE Curiosity roving site mosaic — base imagery (z16, ~0.6 m/px) — https://trek.nasa.gov/tiles/Mars/EQ/curiosity_hirise_mosaic — NASA/JPL/University of Arizona; public domain, no copyright restriction, credit "Image: NASA/JPL/University of Arizona" (HiRISE image usage policy, https://uahirise.org/media/usage.php)
 - Mars Trek WMTS, MRO CTX Curiosity roving site mosaic — base imagery (z10) — https://trek.nasa.gov/tiles/Mars/EQ/curiosity_ctx_mosaic — NASA/JPL/MSSS
 - Mars Trek WMTS, Viking MDIM 2.1 global colour mosaic 232 m — true-colour global base imagery — https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m — NASA/JPL/USGS
 - Mars Trek WMTS, MGS MOLA colour hillshade 463 m — optional shaded-relief layer — https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m — NASA/JPL/GSFC
 - Mars Trek WMTS, Mars Odyssey THEMIS day IR 100 m — thermal layer — https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018 — NASA/JPL/ASU
-- Mars Trek WMTS, USGS SIM 3292 global geologic map (Tanaka et al., 2014) — geology layer — https://trek.nasa.gov/mars/trekarcgis/rest/services/SIM3292_Global_Geology/MapServer/WMTS — USGS, public domain (assumption)
+- Mars Trek WMTS, USGS SIM 3292 global geologic map (Tanaka et al., 2014) — geology layer — https://trek.nasa.gov/mars/trekarcgis/rest/services/SIM3292_Global_Geology/MapServer/WMTS — USGS; USGS-authored data are in the U.S. public domain, credit requested (USGS copyrights and credits, https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits)
 - USGS MSL Gale DEM mosaic 1 m v3 (HiRISE stereo) — 3D terrain, elevation and slope layers and the offline demo routes (read remotely from the 8 m overview, averaged to ~10 m) — https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif — USGS Astrogeology, public domain (product page: https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m)
 - USGS Mars HRSC-MOLA blended DEM global 200 m v2 — terrain around the HiRISE area — https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif — USGS Astrogeology; NASA (MOLA), ESA/DLR/FU Berlin (HRSC)
 - Curiosity REMS daily weather summary (air temperature, pressure, UV) — conditions panel, `data/conditions.json` — https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json — NASA/JPL-Caltech, data processed by Centro de Astrobiología (CAB), outreach use
@@ -20,7 +20,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 - Curiosity localized waypoints (MSL MMGIS) — rover stops layer, POI coordinates — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json — NASA/JPL-Caltech
 - Curiosity drive path (MSL MMGIS) — Curiosity traverse layer, `data/curiosity_traverse.geojson` — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_traverse.json — NASA/JPL-Caltech
 - NASA EMU spacesuit fact sheet (about 8 h of EVA) — oxygen supply as EVA duration, `data/suit_params.json` — https://www.nasa.gov/reference/extravehicular-mobility-unit/ — public domain
-- NASA Image and Video Library — finding POI photos — https://images.nasa.gov — NASA media guidelines
+- NASA Image and Video Library — finding POI photos — https://images.nasa.gov — NASA content is generally not subject to U.S. copyright; NASA credited as the source (NASA Images and Media Usage Guidelines, https://www.nasa.gov/nasa-brand-center/images-and-media/)
 
 ## Space agency partner data
 
@@ -61,7 +61,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ## Images, icons, fonts
 
-All POI photos: NASA/JPL-Caltech/MSSS, via https://images.nasa.gov (NASA media guidelines):
+All POI photos: NASA/JPL-Caltech/MSSS, via https://images.nasa.gov (NASA Images and Media Usage Guidelines, https://www.nasa.gov/nasa-brand-center/images-and-media/):
 
 - PIA17064 "From Glenelg to Mount Sharp" — Bradbury Landing card — https://images.nasa.gov/details/PIA17064
 - PIA16763 "Curiosity Rover Self Portrait at John Klein Drilling Site" — Yellowknife Bay card — https://images.nasa.gov/details/PIA16763

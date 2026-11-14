@@ -8,6 +8,8 @@ export interface RouteRequest {
   goal: LonLat
   max_slope_deg?: number
   speed_flat_m_s?: number
+  /** Sol whose surface conditions feed the verdict (optional). */
+  sol?: number
 }
 
 export interface ProfilePoint {
@@ -24,6 +26,7 @@ export interface Hazard {
 }
 
 export type RouteStatus = 'ok' | 'no_route' | 'out_of_bounds'
+export type Verdict = 'go' | 'caution' | 'no_go'
 
 export interface RouteResponse {
   status: RouteStatus
@@ -37,6 +40,12 @@ export interface RouteResponse {
   descent_m?: number | null
   profile?: ProfilePoint[] | null
   hazards?: Hazard[] | null
+  return_duration_min?: number | null
+  return_o2_used_pct?: number | null
+  round_trip_o2_used_pct?: number | null
+  o2_reserve_pct?: number | null
+  verdict?: Verdict | null
+  verdict_reasons?: string[] | null
 }
 
 export type UvIndex = 'low' | 'moderate' | 'high' | 'very_high'

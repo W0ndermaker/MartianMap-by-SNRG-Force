@@ -70,3 +70,10 @@ def test_real_dem_landing_site_checkpoint():
     low, high = c.LANDING_ELEV_RANGE_M
     assert low <= terrain.elev[cell] <= high
     assert np.isfinite(terrain.slope[cell])
+
+
+def test_relative_dem_path_resolves_against_backend_folder(monkeypatch):
+    from app.config import get_dem_path
+
+    monkeypatch.setenv("DEM_PATH", "data_raw/gale_dem.tif")
+    assert Path(get_dem_path()) == REAL_DEM

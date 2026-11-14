@@ -82,6 +82,9 @@ ROUGHNESS_MAX_FACTOR = 4.0
 TRAVERSE_BUFFER_M = 10.0
 TRAVERSE_COST_FACTOR = 0.5
 
+# The whole oxygen supply in percent (definition of o2_used_pct, not a physical value).
+O2_SUPPLY_PCT = 100.0
+
 # ASSUMPTION: a path cell is hazardous at this fraction of the allowed maximum slope.
 HAZARD_SLOPE_FRACTION = 0.8
 

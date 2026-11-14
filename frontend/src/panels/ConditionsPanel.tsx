@@ -15,9 +15,15 @@ const RISK_LABEL: Record<RiskLevel, string> = {
   red: 'High risk',
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/**
+ * REMS minimum temperatures of exactly this value look like the sensor's lower limit rather than
+ * a measured extreme (all "red" sols in the data have it), see docs/risk_rule.md.
+ */
+const REMS_SENSOR_FLOOR_C = -100
+
+function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" title={title}>
       <div className="text-[11px] uppercase tracking-wide text-stone-400">{label}</div>
       <div className="truncate text-sm font-medium text-stone-100">{value}</div>
     </div>
@@ -103,13 +109,24 @@ export function ConditionsPanel() {
             />
             <Stat label="Pressure" value={fmt(conditions.pressure_pa, 0, 'Pa')} />
             <Stat label="UV" value={titleCase(conditions.uv_index)} />
-            <Stat label="Radiation" value={fmt(conditions.radiation_usv_per_hour, 1, 'µSv/h')} />
+            <Stat
+              label="Radiation · mission avg"
+              value={fmt(conditions.radiation_usv_per_hour, 1, 'µSv/h')}
+              title="RAD mission-average surface dose rate (Hassler et al., 2014); there are no daily values in this data, so it is the same on every sol."
+            />
             <Stat
               label="Dust opacity"
               value={conditions.dust_opacity === null ? 'No data' : fmt(conditions.dust_opacity, 2)}
             />
-            <Stat label="Source" value={conditions.source} />
+            <Stat label="Source" value={conditions.source} title={conditions.source} />
           </div>
+          <p className="basis-full text-[11px] leading-snug text-stone-500">
+            Historical conditions on sol {conditions.sol}, not a live feed. Weather from the REMS
+            daily summary published for outreach (calibrated data is in the NASA PDS); radiation
+            is the RAD mission average.
+            {conditions.temp_min_c === REMS_SENSOR_FLOOR_C &&
+              ` The ${REMS_SENSOR_FLOOR_C} °C minimum may be the sensor limit, not the real low.`}
+          </p>
         </>
       )}
     </section>

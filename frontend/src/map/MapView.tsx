@@ -669,8 +669,12 @@ export default function MapView() {
         return;
       }
       const st = useAppStore.getState();
-      st.placePoint(pair.start);
-      st.placePoint(pair.goal);
+      if ('max_slope_deg' in pair && typeof pair.max_slope_deg === 'number')
+        st.showDemo({ ...pair, max_slope_deg: pair.max_slope_deg });
+      else {
+        st.placePoint(pair.start);
+        st.placePoint(pair.goal);
+      }
     });
   }, [viewerReady, health]);
 

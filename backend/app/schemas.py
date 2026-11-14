@@ -27,6 +27,8 @@ class RouteRequest(BaseModel):
         ge=c.SPEED_FLAT_RANGE_M_S[0],
         le=c.SPEED_FLAT_RANGE_M_S[1],
     )
+    # Optional: the sol whose surface conditions feed the verdict (not part of v1 contract).
+    sol: int | None = Field(default=None, ge=0)
 
 
 class LineString(BaseModel):
@@ -63,6 +65,13 @@ class RouteResponse(BaseModel):
     descent_m: float | None = None
     profile: list[ProfilePoint] | None = Field(default=None, max_length=300)
     hazards: list[Hazard] | None = None
+    # Round trip and decision (added 2026-11-14, optional for older clients).
+    return_duration_min: float | None = None
+    return_o2_used_pct: float | None = None
+    round_trip_o2_used_pct: float | None = None
+    o2_reserve_pct: float | None = None
+    verdict: Literal["go", "caution", "no_go"] | None = None
+    verdict_reasons: list[str] | None = None
 
 
 class ConditionsResponse(BaseModel):

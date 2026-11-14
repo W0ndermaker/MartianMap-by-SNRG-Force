@@ -1,13 +1,81 @@
+import { useEffect, useState } from 'react'
+import { OFFLINE_ROUTE_REASON, offlineDemoPairs } from '../api/offline'
+import type { LonLat, Verdict } from '../api/types'
 import { useAppStore } from '../store/useAppStore'
 import { fmt, fmtDistance, fmtDuration } from './format'
+
+// Safety colours from the project brief: red and green get lost on the rust-coloured map.
+const VERDICT_STYLE: Record<Verdict, string> = {
+  go: 'bg-cyan-400/15 text-cyan-200 ring-cyan-300/50',
+  caution: 'bg-yellow-100/10 text-yellow-100 ring-yellow-100/50',
+  no_go: 'bg-fuchsia-500/20 text-fuchsia-200 ring-fuchsia-400/60',
+}
+
+const VERDICT_LABEL: Record<Verdict, string> = {
+  go: 'GO',
+  caution: 'CAUTION',
+  no_go: 'NO-GO',
+}
 
 function Metric({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
   return (
     <div className="rounded-lg bg-stone-800/70 px-3 py-2">
       <div className="text-[11px] uppercase tracking-wide text-stone-400">{label}</div>
-      <div className={`text-lg font-semibold ${warn ? 'text-amber-300' : 'text-stone-50'}`}>
+      <div className={`text-lg font-semibold ${warn ? 'text-fuchsia-300' : 'text-stone-50'}`}>
         {value}
       </div>
+    </div>
+  )
+}
+
+function VerdictBanner({ verdict, reasons }: { verdict: Verdict; reasons: string[] }) {
+  return (
+    <div className={`col-span-2 rounded-lg px-3 py-2 ring-1 ${VERDICT_STYLE[verdict]}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-base font-bold tracking-wide">{VERDICT_LABEL[verdict]}</span>
+        <span className="text-[10px] uppercase tracking-wide opacity-70">planning estimate</span>
+      </div>
+      {reasons.length > 0 && (
+        <ul className="mt-1 space-y-0.5 text-xs">
+          {reasons.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+type DemoPair = { start: LonLat; goal: LonLat; max_slope_deg: number }
+
+/** Offline: the precomputed routes are the only ones available, so offer them as buttons. */
+function DemoRoutes() {
+  const showDemo = useAppStore((s) => s.showDemo)
+  const poi = useAppStore((s) => s.poi)
+  const [pairs, setPairs] = useState<DemoPair[]>([])
+  useEffect(() => {
+    void offlineDemoPairs().then(setPairs)
+  }, [])
+
+  const name = (p: LonLat) =>
+    poi?.features.find(
+      (f) => f.geometry.coordinates[0] === p[0] && f.geometry.coordinates[1] === p[1],
+    )?.properties.name ?? `${p[0].toFixed(3)}, ${p[1].toFixed(3)}`
+
+  return (
+    <div className="mt-3 space-y-1.5">
+      <p className="text-[11px] uppercase tracking-wide text-stone-400">Demo routes (offline)</p>
+      {pairs.map((pair, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={() => showDemo(pair)}
+          className="block w-full rounded-md bg-stone-800/70 px-2 py-1.5 text-left text-xs text-stone-200 hover:bg-stone-700"
+        >
+          {name(pair.start)} → {name(pair.goal)}{' '}
+          <span className="text-stone-400">· max {pair.max_slope_deg}°</span>
+        </button>
+      ))}
     </div>
   )
 }
@@ -17,17 +85,18 @@ export function EvaPanel() {
   const goal = useAppStore((s) => s.goal)
   const route = useAppStore((s) => s.route)
   const state = useAppStore((s) => s.routeState)
+  const offline = useAppStore((s) => s.offline)
   const clearRoute = useAppStore((s) => s.clearRoute)
 
   let body
   if (!start) body = <Hint text="Click the map to set a start point." />
   else if (!goal) body = <Hint text="Now click the map to set the goal." />
-  else if (state === 'loading' && !route) body = <Hint text="Planning route…" />
+  else if (state === 'loading' && !route) body = <Hint text="Planning route and the way back…" />
   else if (state === 'error') body = <Hint tone="error" text="Route planning failed. Try again." />
   else if (route && route.status !== 'ok')
     body = (
       <Hint
-        tone="error"
+        tone={route.reason === OFFLINE_ROUTE_REASON ? 'muted' : 'error'}
         text={
           route.reason ??
           (route.status === 'out_of_bounds'
@@ -37,28 +106,39 @@ export function EvaPanel() {
       />
     )
   else if (route) {
-    const o2 = route.o2_used_pct
+    const reserve = route.o2_reserve_pct
     body = (
       <div className={`grid grid-cols-2 gap-2 ${state === 'loading' ? 'opacity-60' : ''}`}>
+        {route.verdict && (
+          <VerdictBanner verdict={route.verdict} reasons={route.verdict_reasons ?? []} />
+        )}
         <Metric label="Distance" value={fmtDistance(route.distance_m)} />
-        <Metric label="Time" value={fmtDuration(route.duration_min)} />
-        <Metric label="Oxygen used" value={fmt(o2, 0, '%')} warn={o2 != null && o2 > 50} />
+        <Metric label="Time out" value={fmtDuration(route.duration_min)} />
+        <Metric label="Time back" value={fmtDuration(route.return_duration_min)} />
         <Metric label="Max slope" value={fmt(route.max_slope_deg, 1, '°')} />
+        <Metric
+          label="O₂ round trip"
+          value={fmt(route.round_trip_o2_used_pct ?? route.o2_used_pct, 0, '%')}
+        />
+        <Metric
+          label="O₂ reserve"
+          value={fmt(reserve, 0, '%')}
+          warn={reserve !== null && reserve !== undefined && reserve < 0}
+        />
         <Metric label="Ascent" value={fmt(route.ascent_m, 0, 'm')} />
         <Metric label="Descent" value={fmt(route.descent_m, 0, 'm')} />
-        {o2 != null && o2 > 50 && (
-          <p className="col-span-2 text-xs text-amber-300">
-            Round trip needs more than the full oxygen supply.
-          </p>
-        )}
         {route.hazards && route.hazards.length > 0 && (
-          <ul className="col-span-2 space-y-1 text-xs text-red-300">
+          <ul className="col-span-2 space-y-1 text-xs text-fuchsia-300">
             {route.hazards.slice(0, 4).map((h, i) => (
               <li key={i}>⚠ {h.note}</li>
             ))}
             {route.hazards.length > 4 && <li>…and {route.hazards.length - 4} more</li>}
           </ul>
         )}
+        <p className="col-span-2 text-[11px] leading-snug text-stone-500">
+          Estimates: walking speed from Tobler&apos;s hiking function and oxygen as a share of an
+          8-hour EMU suit supply (both Earth-based assumptions); slope on a 10 m grid.
+        </p>
       </div>
     )
   }
@@ -78,6 +158,7 @@ export function EvaPanel() {
         )}
       </div>
       {body}
+      {offline && <DemoRoutes />}
     </section>
   )
 }

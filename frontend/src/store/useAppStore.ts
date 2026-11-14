@@ -17,7 +17,9 @@ export interface Layers {
 
 export interface AppState {
   health: Health | null
-  /** True once any request has been answered from offline data. */
+  /** True while the first request waits for a sleeping server to wake up. */
+  connecting: boolean
+  /** True when the latest answer came from offline data (resets once the server answers). */
   offline: boolean
 
   start: LonLat | null
@@ -46,6 +48,8 @@ export interface AppState {
   loadConditions: (sol?: number) => Promise<void>
   selectPoi: (id: string | null) => void
   routeToPoi: (id: string) => void
+  /** Shows a precomputed demo route: its start, goal and max slope. */
+  showDemo: (pair: { start: LonLat; goal: LonLat; max_slope_deg: number }) => void
   toggleLayer: (layer: keyof Layers) => void
 }
 
@@ -53,6 +57,7 @@ export const SLOPE_RANGE_DEG = suit.max_slope_range_deg.value as [number, number
 
 export const useAppStore = create<AppState>((set, get) => ({
   health: null,
+  connecting: false,
   offline: false,
   start: null,
   goal: null,
@@ -67,8 +72,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   layers: { route: true, hazards: true, poi: true, traverse: true },
 
   init: async () => {
-    const [health, poi] = await Promise.all([api.health(), api.poi()])
-    set({ health: health.data, poi: poi.data, offline: health.offline || poi.offline })
+    set({ connecting: true })
+    // Health first: it waits for a sleeping server, then the other requests are fast.
+    const health = await api.health()
+    const poi = await api.poi()
+    set({
+      connecting: false,
+      health: health.data,
+      poi: poi.data,
+      offline: health.offline || poi.offline,
+    })
     await get().loadConditions()
   },
 
@@ -97,7 +110,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   planRoute: async () => {
-    const { start, goal, maxSlopeDeg } = get()
+    const { start, goal, maxSlopeDeg, sol } = get()
     if (!start || !goal) return
     set({ routeState: 'loading' })
     try {
@@ -106,10 +119,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         goal,
         max_slope_deg: maxSlopeDeg,
         speed_flat_m_s: suit.speed_flat_m_s.value,
+        ...(sol === null ? {} : { sol }),
       })
       // Ignore a response for points the user has already moved.
       if (get().start !== start || get().goal !== goal || get().maxSlopeDeg !== maxSlopeDeg) return
-      set({ route: result.data, routeState: 'ready', offline: get().offline || result.offline })
+      set({ route: result.data, routeState: 'ready', offline: result.offline })
     } catch (error) {
       console.error(error)
       set({ route: null, routeState: 'error' })
@@ -126,8 +140,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         conditions: result.data,
         sol: result.data.sol,
         conditionsState: 'ready',
-        offline: get().offline || result.offline,
+        offline: result.offline,
       })
+      // The verdict depends on the sol: update a shown route.
+      if (get().route) void get().planRoute()
     } catch (error) {
       console.error(error)
       set({ conditionsState: 'error' })
@@ -144,6 +160,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const base = get().poi?.features.find((f) => f.properties.kind === 'base')
     const start = get().start ?? base?.geometry.coordinates ?? null
     set({ start, goal })
+    void get().planRoute()
+  },
+
+  showDemo: ({ start, goal, max_slope_deg }) => {
+    set({ start, goal, maxSlopeDeg: max_slope_deg, route: null })
     void get().planRoute()
   },
 
