@@ -19,7 +19,7 @@ Without a backend (or with `VITE_API_URL` empty) the app runs in **offline demo*
 | `src/api/` | Contract types, API client with offline fallback |
 | `src/store/` | Shared Zustand store (map and panels) |
 | `src/panels/` | Conditions, EVA plan, elevation profile, POI card, layers and slope slider |
-| `src/map/PlaceholderMap.tsx` | Temporary 2D map; developer A replaces it with the 3D scene |
+| `src/map/` | 3D map (developer A): CesiumJS scene, terrain, layers, route rendering |
 
 `@data/*` is an alias for the repository's `data/` folder.
 
@@ -29,7 +29,7 @@ Root directory: `frontend`. Build command `npm run build`, output `dist`. Set `V
 
 ## 3D map (developer A)
 
-`src/map/MapView.tsx` replaces the placeholder map. It reads and writes the shared store (`placePoint`,
+`src/map/MapView.tsx` is the map of the app. It reads and writes the shared store (`placePoint`,
 `selectPoi`, route/hazards/POI/traverse switches) and adds map-only state in `src/map/mapStore.ts`.
 
 - CesiumJS globe on the Mars sphere; imagery from NASA Mars Trek: Viking MDIM 2.1 colour mosaic (true colour),
@@ -48,17 +48,8 @@ Root directory: `frontend`. Build command `npm run build`, output `dist`. Set `V
 `VITE_API_URL` to the dev-server origin (for example `http://192.168.1.10:5173`): Vite proxies `/api` to
 `http://localhost:8000`, so the backend's CORS list does not need the LAN address.
 
-### Real terrain for the backend (until DEM loading lands there)
+### Backend on real terrain
 
-`backend/app/deps.py` still builds synthetic terrain. These scripts patch `get_terrain()` with the HiRISE grid,
-without changing backend code:
-
-```bash
-# API on real terrain
-uv run --no-project --python 3.12 --with-requirements ../backend/requirements.txt python scripts/real_terrain_backend.py
-# offline demo routes on real terrain (C's script, unchanged), from the repository root
-uv run --no-project --python 3.12 --with-requirements backend/requirements.txt \
-    python frontend/scripts/run_with_real_terrain.py data/scripts/build_demo_routes.py
-```
-
-`data/demo_routes.json` in this branch was regenerated this way (`health.terrain` = `real`).
+The backend loads the real Gale elevation map prepared by `backend/scripts/prepare_dem.py`
+(set `DEM_PATH` in `backend/.env`, see `backend/.env.example`). `data/demo_routes.json` was regenerated on it
+with `data/scripts/build_demo_routes.py` (`health.terrain` = `real`).
