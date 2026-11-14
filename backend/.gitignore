@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets
+.env
+
+# Elevation data (large files, fetched and prepared by scripts/prepare_dem.py)
+*.tif
+*.tiff
+*.img
+*.lbl
+data_raw/
+
+# Internal working docs in Russian: keep local, not in the public repo
+# (submission rules require English in all linked materials)
+CLAUDE.md
+docs/

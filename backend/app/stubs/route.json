@@ -1,0 +1,17 @@
+{
+  "path": {
+    "type": "LineString",
+    "coordinates": [[137.4417, -4.5895, -4490.0], [137.4410, -4.5901, -4488.5]]
+  },
+  "distance_m": 1840,
+  "duration_min": 46,
+  "o2_used_pct": 21,
+  "max_slope_deg": 17.4,
+  "ascent_m": 62,
+  "descent_m": 18,
+  "profile": [{"dist_m": 0, "elev_m": -4490.0, "slope_deg": 0.0}],
+  "hazards": [
+    {"type": "steep_slope", "position": [137.4301, -4.6012], "value": 17.4, "note": "Steep section, 40 m"}
+  ],
+  "status": "ok"
+}

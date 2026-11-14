@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {"type": "Point", "coordinates": [137.3800, -4.7200]},
+      "properties": {
+        "id": "poi-01",
+        "name": "Boxwork formations",
+        "kind": "science",
+        "description": "What to study here and why",
+        "photo_url": null,
+        "photo_credit": "NASA/JPL-Caltech"
+      }
+    }
+  ]
+}

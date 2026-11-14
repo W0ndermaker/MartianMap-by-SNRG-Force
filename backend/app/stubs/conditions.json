@@ -1,0 +1,11 @@
+{
+  "sol": 3000,
+  "temp_min_c": -75,
+  "temp_max_c": -8,
+  "pressure_pa": 830,
+  "uv_index": "moderate",
+  "radiation_usv_per_hour": 27,
+  "dust_opacity": 0.6,
+  "risk_level": "green",
+  "source": "Curiosity REMS / RAD"
+}
