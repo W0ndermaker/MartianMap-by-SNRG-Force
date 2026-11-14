@@ -9,7 +9,7 @@ Walk from the crew base at Bradbury Landing to the layered rocks of Mount Sharp'
 ## Limitations (stated honestly)
 
 - Planning estimates, not a safety certification. Hazards are judged from slope and roughness on a 10 m elevation grid; rocks and sand are not modelled.
-- Walking speed (Tobler's hiking function) and oxygen use (share of an 8-hour EMU supply) are Earth-based approximations.
+- Walking speed (Tobler's hiking function) and oxygen use (share of a 7-hour EMU supply, with a 30-minute emergency reserve that must be left after the way back) are approximations.
 - Weather is the REMS daily summary published for outreach (calibrated data is in the NASA PDS); conditions are historical, not live. Radiation is the RAD mission average, the same on every sol; dust opacity is not available. REMS minima of exactly −100 °C may be the sensor limit.
 - Without the server, the site shows only the precomputed demo routes.
 - How the elevation map and routes were checked against Curiosity's real traverse: `backend/VALIDATION.md`.

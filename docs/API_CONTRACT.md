@@ -59,7 +59,7 @@ Builds a route between two points.
 | `verdict` | string | `go`, `caution` or `no_go` |
 | `verdict_reasons` | array of strings | Short English reasons for the interface, most important first |
 
-Verdict rule: `no_go` if there is no way back, the round trip needs more than 100 % of the supply, or the sol risk is `red`; `caution` if the route out or back has hazards or the sol risk is `yellow`; otherwise `go`. The new fields are present only when `status` is `ok`; older clients may ignore them.
+Verdict rule: `no_go` if there is no way back, less than the 30-minute emergency reserve of oxygen (at the planned rate of a 7-hour supply) is left after the way back, or the sol risk is `red`; `caution` if less than 1.5 × the reserve is left, the route out or back has hazards, or the sol risk is `yellow`; otherwise `go`. The new fields are present only when `status` is `ok`; older clients may ignore them.
 
 `profile` element: `{"dist_m": number, "elev_m": number, "slope_deg": number}`.
 
@@ -185,7 +185,7 @@ Response:
 | `reasons` | array of strings | English messages for the panel and the voice, most important first |
 | `o2_remaining_pct` | number | Last reading |
 | `rate_pct_per_min` | number | Measured use: least-squares slope over the last 10 minutes |
-| `planned_rate_pct_per_min` | number | Whole supply over the rated EVA duration |
+| `planned_rate_pct_per_min` | number | Whole supply over the rated EVA duration (420 min) |
 | `minutes_of_o2_left` | number | At the measured rate |
 | `minutes_to_base` | number or null | Walking time back to the base from the position (null: no way back) |
 | `turn_back_in_min` | number or null | Minutes until the latest turn-back moment (null: already past) |
@@ -200,7 +200,7 @@ Demo EVA for the video and the offline mode: simulated suit telemetry on a real 
 
 ## Static files for the map
 
-- `data/reach_from_base.geojson` — walk-back rings from the base: one MultiLineString per ring with `properties: {kind: "ring" | "walkback", minutes, label, area_km2}`; the `walkback` ring is the farthest point from which the astronaut can still walk back within the oxygen supply. Built by `backend/scripts/build_reach.py`.
+- `data/reach_from_base.geojson` — walk-back rings from the base: one MultiLineString per ring with `properties: {kind: "ring" | "walkback", minutes, label, area_km2}`; the `walkback` ring is the farthest point from which the astronaut can still walk back with the 30-minute reserve left: (420 − 30) / 2 = 195 minutes of walking from the base. Built by `backend/scripts/build_reach.py`.
 - `data/copilot_scenario.json` — see section 6. Built by `backend/scripts/build_copilot_scenario.py`.
 
 ## Change history
@@ -211,3 +211,4 @@ Demo EVA for the video and the offline mode: simulated suit telemetry on a real 
 | 2026-11-14 | `reason`, `note`, `name`, `description` texts switched to English per the submission rules | B |
 | 2026-11-14 | Optional `sol` in the route request; round trip, oxygen reserve and `verdict` / `verdict_reasons` in the route response (backward compatible). Needs A and C sign-off | B |
 | 2026-11-14 | New `POST /api/copilot/assess`, `GET /api/copilot/scenario`; static files `reach_from_base.geojson`, `copilot_scenario.json` (additive). Needs A and C sign-off | B |
+| 2026-11-15 | Suit supply 420 min (NASA OIG: EMU up to 7 hours); verdict NO-GO below the 30-min reserve left after the way back, CAUTION below 1.5 × reserve; walk-back ring at 195 min | B |

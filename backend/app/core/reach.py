@@ -37,8 +37,8 @@ def travel_minutes(
 
 
 def walkback_minutes() -> float:
-    """One-way time limit so that out and back fit in the suit oxygen supply (minutes)."""
-    return c.EVA_MAX_DURATION_MIN / 2.0
+    """One-way time limit: out and back fit in the supply with the emergency reserve left."""
+    return (c.EVA_MAX_DURATION_MIN - c.COPILOT_RESERVE_MIN) / 2.0
 
 
 def reach_features(terrain: Terrain, minutes: np.ndarray, levels: list[float]) -> list[dict]:

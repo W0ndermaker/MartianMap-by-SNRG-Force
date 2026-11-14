@@ -48,3 +48,40 @@ def test_reason_percentages_add_up_to_100_at_half_values():
     r = assess_eva(_leg(15.9), _leg(15.6), None, None)  # round trip 31.5
     assert "uses 32 %" in r["verdict_reasons"][0]
     assert "68 % left" in r["verdict_reasons"][0]
+
+
+from app.core import constants as c
+from app.core.oxygen import planned_rate_pct_per_min, reserve_pct
+
+
+def test_go_is_impossible_below_the_reserve():
+    """Invariant: with less than the 30-minute reserve left after the way back, never GO."""
+    for tenths in range(1000):
+        round_trip = tenths / 10
+        left = c.O2_SUPPLY_PCT - round_trip
+        r = assess_eva(_leg(round_trip / 2), _leg(round_trip / 2), "green", 1)
+        if left < reserve_pct():
+            assert r["verdict"] == "no_go", round_trip
+        elif left < reserve_pct() * c.RESERVE_CAUTION_FACTOR:
+            assert r["verdict"] == "caution", round_trip
+        else:
+            assert r["verdict"] == "go", round_trip
+
+
+def test_reserve_is_30_minutes_of_a_7_hour_supply():
+    assert c.EVA_MAX_DURATION_MIN == 420
+    assert reserve_pct() == pytest.approx(30 / 420 * 100)
+    assert planned_rate_pct_per_min() == pytest.approx(100 / 420)
+
+
+def test_no_go_reason_names_the_reserve():
+    r = assess_eva(_leg(47), _leg(47), None, None)  # 6 % left = 25 min < 30 min
+    assert r["verdict"] == "no_go"
+    assert "below the 30-min emergency reserve" in r["verdict_reasons"][0]
+
+
+def test_copilot_and_verdict_share_the_reserve():
+    from app.core import copilot
+
+    assert copilot.reserve_pct is reserve_pct
+    assert copilot.planned_rate_pct_per_min is planned_rate_pct_per_min

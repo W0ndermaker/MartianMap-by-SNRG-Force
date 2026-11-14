@@ -40,7 +40,7 @@ def test_rings_are_ordered_and_outer_is_walkback():
     areas = [f["properties"]["area_km2"] for f in feats]
     assert areas == sorted(areas)
     assert all(f["geometry"]["coordinates"] for f in feats)
-    assert walkback_minutes() == c.EVA_MAX_DURATION_MIN / 2
+    assert walkback_minutes() == (c.EVA_MAX_DURATION_MIN - c.COPILOT_RESERVE_MIN) / 2
 
 
 def test_steep_origin_reaches_nothing():

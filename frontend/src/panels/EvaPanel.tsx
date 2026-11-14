@@ -161,7 +161,7 @@ export function EvaPanel() {
         )}
         <p className="col-span-2 text-[11px] leading-snug text-stone-500">
           Estimates: walking speed from Tobler&apos;s hiking function and oxygen as a share of an
-          8-hour EMU suit supply (both Earth-based assumptions); slope on a 10 m grid.
+          7-hour EMU suit supply with a 30-min reserve (Earth-based assumptions); slope on a 10 m grid.
         </p>
       </div>
     )

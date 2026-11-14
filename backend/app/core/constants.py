@@ -64,13 +64,10 @@ DEFAULT_SPEED_FLAT_M_S = 1.0  # ASSUMPTION (same value in developer C suit_param
 TOBLER_K = 3.5
 TOBLER_OFFSET = 0.05
 
-# Oxygen supply expressed as maximum EVA duration (upper end of the documented range).
-# The EMU primary life support provides "~7 to 8 hours" of breathing oxygen (NASA, Human
-# Spaceflight Operations: EVA, NTRS 20150006014, slide 18); NASA OIG IG-17-018 gives "up to
-# 7 hours" for the current EMU and 8 hours per EVA for the next-generation xEMU.
-# https://ntrs.nasa.gov/citations/20150006014  https://oig.nasa.gov/docs/IG-17-018.pdf
-# (same value as data/suit_params.json, developer C; the URL cited there no longer resolves).
-EVA_MAX_DURATION_MIN = 480.0
+# Oxygen supply expressed as maximum EVA duration. The current NASA EMU provides "oxygen for up to
+# 7 hours" (NASA OIG, IG-17-018, 2017, p. 8): https://oig.nasa.gov/docs/IG-17-018.pdf
+# The conservative end of the documented range: NTRS 20150006014 (slide 18) gives "~7 to 8 hours".
+EVA_MAX_DURATION_MIN = 420.0
 
 # Terrain roughness (local relief at the 10 m grid scale: ridges, scarps, knobs) adds travel cost:
 # multiplier = 1 + roughness_m / ROUGHNESS_REF_M, at most ROUGHNESS_MAX_FACTOR.
@@ -92,17 +89,23 @@ O2_SUPPLY_PCT = 100.0
 HAZARD_SLOPE_FRACTION = 0.8
 
 # Reachability rings from the base (presentation steps, not physical limits). The outer ring is
-# always the walk-back limit: half of EVA_MAX_DURATION_MIN, so out and back fit in the supply.
+# always the walk-back limit: out and back must fit in the supply with the emergency reserve
+# left, (EVA_MAX_DURATION_MIN - COPILOT_RESERVE_MIN) / 2.
 REACH_RING_MINUTES = (30.0, 60.0, 120.0, 180.0)
 # Contour simplification tolerance, in grid cells (keeps the GeoJSON small for the browser).
 REACH_SIMPLIFY_CELLS = 1.0
 # Contour loops shorter than this many cells (about 1 km) are dropped as map-scale noise.
 REACH_MIN_RING_CELLS = 100
 
-# EVA Copilot (Air module).
+# Oxygen reserve rule (route verdict and EVA Copilot, app.core.oxygen).
 # Emergency oxygen kept back: the EMU secondary oxygen pack holds 30 minutes of oxygen
 # (NASA OIG IG-17-018, p. 9; NTRS 20150006014, slide 18: "minimum of 30 minutes").
 COPILOT_RESERVE_MIN = 30.0
+# Project rule: below 1.5x the reserve after the way back the verdict is CAUTION (margin for
+# walking slower than planned).
+RESERVE_CAUTION_FACTOR = 1.5
+
+# EVA Copilot (Air module).
 # Consumption rate is fitted over the readings of the last N minutes (algorithm setting).
 COPILOT_RATE_WINDOW_MIN = 10.0
 # ASSUMPTION: breathing 20 % faster than planned is worth a "slow down" message.

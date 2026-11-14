@@ -52,7 +52,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ## Methods and formulas
 
-- NASA Office of Inspector General, "NASA's Management and Development of Spacesuits", IG-17-018 (2017) — EMU oxygen for up to 7 hours, 30-minute secondary oxygen pack, 8 hours per EVA for the xEMU — https://oig.nasa.gov/docs/IG-17-018.pdf — U.S. Government work
+- NASA Office of Inspector General, "NASA's Management and Development of Spacesuits", IG-17-018 (2017) — EMU oxygen for up to 7 hours (the suit supply used by the planner: 420 min) and the 30-minute secondary oxygen pack (the emergency reserve in the verdict and the Copilot); 8 hours per EVA is for the next-generation xEMU — https://oig.nasa.gov/docs/IG-17-018.pdf — U.S. Government work
 - Scoville, Z., "Human Spaceflight Operations: Extra-Vehicular Activity", NASA (NTRS 20150006014) — EMU primary life support "~7 to 8 hours", secondary oxygen package "minimum of 30 minutes" — https://ntrs.nasa.gov/citations/20150006014 — U.S. Government work
 - Least-cost travel time from the base to every cell (scikit-image MCP_Geometric) and contour rings (skimage.measure.find_contours) — walk-back rings — https://scikit-image.org — BSD-3-Clause
 - EVA Copilot oxygen rate: least-squares slope of tank readings over the last 10 minutes; tank pressure proportional to the amount of gas (ideal gas at constant temperature) — n/a

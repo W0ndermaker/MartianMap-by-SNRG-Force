@@ -1,15 +1,17 @@
 """EVA decision: round-trip oxygen budget and a Go / Caution / No-Go verdict.
 
-The rule uses only quantities the service already computes (oxygen share of the suit supply,
-hazards on the route, the risk level of the sol); it adds no new physical thresholds.
-No-Go: no way back, the round trip needs more than the whole supply, or a red-risk sol.
-Caution: steep sections on the way out or back, or a yellow-risk sol. Otherwise Go.
+No-Go: no way back, less than the emergency reserve (COPILOT_RESERVE_MIN minutes of oxygen)
+left after the way back, or a red-risk sol.
+Caution: less than RESERVE_CAUTION_FACTOR times the reserve left, steep sections on the way out
+or back, or a yellow-risk sol. Otherwise Go.
+The reserve rule is app.core.oxygen.reserve_state, the same one the EVA Copilot uses.
 """
 
 import math
 from typing import Literal
 
 from app.core import constants as c
+from app.core.oxygen import pct_to_minutes, reserve_state
 
 Verdict = Literal["go", "caution", "no_go"]
 
@@ -40,8 +42,20 @@ def assess_eva(outbound: dict, back: dict, risk_level: str | None, sol: int | No
             round_trip_o2_used_pct=round(round_trip, 1),
             o2_reserve_pct=round(c.O2_SUPPLY_PCT - round_trip, 1),
         )
+        left = c.O2_SUPPLY_PCT - round_trip
+        state = reserve_state(left)
         if round_trip > c.O2_SUPPLY_PCT:
             reasons_no_go.append(f"Round trip needs {round_trip:.0f} % of the oxygen supply")
+        elif state == "below":
+            reasons_no_go.append(
+                f"Only {pct_to_minutes(left):.0f} min of oxygen left after the way back, "
+                f"below the {c.COPILOT_RESERVE_MIN:.0f}-min emergency reserve"
+            )
+        elif state == "low":
+            reasons_caution.append(
+                f"{pct_to_minutes(left):.0f} min of oxygen left after the way back, close to the "
+                f"{c.COPILOT_RESERVE_MIN:.0f}-min emergency reserve"
+            )
 
     steep = len(outbound.get("hazards") or []) + len(back.get("hazards") or [])
     if steep:

@@ -14,19 +14,12 @@ from typing import Literal
 import numpy as np
 
 from app.core import constants as c
+from app.core.oxygen import planned_rate_pct_per_min, reserve_pct
 
 Level = Literal["go", "caution", "turn_back", "emergency"]
+__all__ = ["assess_air", "consumption_rate", "planned_rate_pct_per_min", "reserve_pct"]
+
 _ORDER: dict[Level, int] = {"go": 0, "caution": 1, "turn_back": 2, "emergency": 3}
-
-
-def planned_rate_pct_per_min() -> float:
-    """Planned oxygen use: the whole supply over the rated EVA duration (% per minute)."""
-    return c.O2_SUPPLY_PCT / c.EVA_MAX_DURATION_MIN
-
-
-def reserve_pct() -> float:
-    """Oxygen kept back for emergencies: the secondary supply time at the planned rate (%)."""
-    return c.COPILOT_RESERVE_MIN * planned_rate_pct_per_min()
 
 
 def consumption_rate(times_min: np.ndarray, o2_pct: np.ndarray) -> float | None:
