@@ -27,7 +27,8 @@ def roughness_m(elev: np.ndarray) -> np.ndarray:
     # The 3x3 mean is not defined on the outer ring; treat it as smooth instead of inventing relief.
     residual[[0, -1], :] = 0.0
     residual[:, [0, -1]] = 0.0
-    rms = np.sqrt(ndimage.uniform_filter(residual**2, size=3, mode="nearest"))
+    # Rounding can make the filtered mean of squares a tiny negative number; clip before sqrt.
+    rms = np.sqrt(np.maximum(ndimage.uniform_filter(residual**2, size=3, mode="nearest"), 0.0))
     return np.where(np.isfinite(elev), rms, np.nan)
 
 

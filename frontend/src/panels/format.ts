@@ -18,8 +18,10 @@ export function fmtDistance(m: number | null | undefined): string {
 
 export function fmtDuration(min: number | null | undefined): string {
   if (min === null || min === undefined) return NO_DATA
-  const h = Math.floor(min / 60)
-  const m = Math.round(min % 60)
+  // Round the total first: 239.5 min is "4 h 0 min", not "3 h 60 min".
+  const total = Math.round(min)
+  const h = Math.floor(total / 60)
+  const m = total % 60
   return h > 0 ? `${h} h ${m} min` : `${m} min`
 }
 

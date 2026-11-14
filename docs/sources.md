@@ -37,6 +37,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 - scikit-image (skimage.graph.route_through_array) — least-cost path on a grid — https://scikit-image.org — BSD-3-Clause
 - Rasterio — reading GeoTIFF elevation maps — https://rasterio.readthedocs.io — BSD-3-Clause
 - pytest, httpx, ruff — tests and linting — https://docs.pytest.org, https://www.python-httpx.org, https://docs.astral.sh/ruff — MIT
+- GDAL (bundled with Rasterio) — reading and warping the elevation GeoTIFF — https://gdal.org — MIT
 
 ### Frontend
 
@@ -48,6 +49,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 - Zustand 5 — shared app state — https://zustand.docs.pmnd.rs — MIT
 - ESLint, typescript-eslint — linting — https://eslint.org — MIT
 - CesiumJS 1.147 — 3D globe, terrain, imagery layers — https://cesium.com/platform/cesiumjs/ — Apache-2.0
+- Web Speech API (SpeechSynthesis, built into the browser) — EVA Copilot voice messages — https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API — browser feature, no library
 - Cesium Mars (Cesium ion asset 3644333, optional, only with a user token) — alternative global 3D terrain — https://cesium.com/platform/cesium-ion/content/cesium-mars/ — Cesium ion terms of service
 
 ## Methods and formulas
