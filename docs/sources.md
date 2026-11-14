@@ -12,10 +12,14 @@ Format: `- Name — what we used it for — link — license (if known)`
 - Mars Trek WMTS, MGS MOLA colour hillshade 463 m — optional shaded-relief layer — https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m — NASA/JPL/GSFC
 - Mars Trek WMTS, Mars Odyssey THEMIS day IR 100 m — thermal layer — https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018 — NASA/JPL/ASU
 - Mars Trek WMTS, USGS SIM 3292 global geologic map (Tanaka et al., 2014) — geology layer — https://trek.nasa.gov/mars/trekarcgis/rest/services/SIM3292_Global_Geology/MapServer/WMTS — USGS, public domain (assumption)
-- USGS MSL Gale DEM mosaic 1 m v3 (HiRISE stereo) — 3D terrain, elevation and slope layers, fallback routes (read remotely from the 8 m overview, averaged to ~10 m) — https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif — USGS Astrogeology / NASA/JPL/University of Arizona; public domain (assumption: confirm on product page)
+- USGS MSL Gale DEM mosaic 1 m v3 (HiRISE stereo) — 3D terrain, elevation and slope layers and the offline demo routes (read remotely from the 8 m overview, averaged to ~10 m) — https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif — USGS Astrogeology / NASA/JPL/University of Arizona; public domain (assumption: confirm on product page)
 - USGS Mars HRSC-MOLA blended DEM global 200 m v2 — terrain around the HiRISE area — https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif — USGS Astrogeology; NASA (MOLA), ESA/DLR/FU Berlin (HRSC)
-- Curiosity traverse and end-of-drive waypoints (MMGIS) — Curiosity path layer, fallback route endpoints, POIs — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_traverse.json , https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json — NASA/JPL-Caltech
-- Curiosity raw images API (Navcam, sols 944, 3601, 4098) — POI photos in the fallback data — https://mars.nasa.gov/api/v1/raw_image_items/ — NASA/JPL-Caltech
+- Curiosity REMS daily weather summary (air temperature, pressure, UV) — conditions panel, `data/conditions.json` — https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json — NASA/JPL-Caltech, data processed by Centro de Astrobiología (CAB), outreach use
+- Curiosity RAD mean surface dose equivalent rate, 0.64 mSv/day — radiation value per sol — Hassler, D. M. et al. (2014), Mars' Surface Radiation Environment Measured with the Mars Science Laboratory's Curiosity Rover, Science 343, https://doi.org/10.1126/science.1244797 — n/a
+- Curiosity localized waypoints (MSL MMGIS) — rover stops layer, POI coordinates — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json — NASA/JPL-Caltech
+- Curiosity drive path (MSL MMGIS) — Curiosity traverse layer, `data/curiosity_traverse.geojson` — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_traverse.json — NASA/JPL-Caltech
+- NASA EMU spacesuit fact sheet (about 8 h of EVA) — oxygen supply as EVA duration, `data/suit_params.json` — https://www.nasa.gov/reference/extravehicular-mobility-unit/ — public domain
+- NASA Image and Video Library — finding POI photos — https://images.nasa.gov — NASA media guidelines
 
 ## Space agency partner data
 
@@ -35,13 +39,15 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ### Frontend
 
+- React 19 — user interface — https://react.dev — MIT
+- Vite 6 — dev server and build — https://vite.dev — MIT
+- TypeScript — typed code — https://www.typescriptlang.org — Apache-2.0
+- Tailwind CSS 4 — styling — https://tailwindcss.com — MIT
+- Recharts 2 — elevation profile chart — https://recharts.org — MIT
+- Zustand 5 — shared app state — https://zustand.docs.pmnd.rs — MIT
+- ESLint, typescript-eslint — linting — https://eslint.org — MIT
 - CesiumJS 1.147 — 3D globe, terrain, imagery layers — https://cesium.com/platform/cesiumjs/ — Apache-2.0
 - Cesium Mars (Cesium ion asset 3644333, optional, only with a user token) — alternative global 3D terrain — https://cesium.com/platform/cesium-ion/content/cesium-mars/ — Cesium ion terms of service
-- React 19 — UI — https://react.dev — MIT
-- Zustand 5 — shared state store — https://github.com/pmndrs/zustand — MIT
-- Vite 8 — dev server and build — https://vite.dev — MIT
-- Tailwind CSS 4 — styling — https://tailwindcss.com — MIT
-- TypeScript — type checking — https://www.typescriptlang.org — Apache-2.0
 
 ## Methods and formulas
 
@@ -50,8 +56,20 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ## Images, icons, fonts
 
-- Map markers (start/goal, POI pins, hazard triangle) — drawn by the team as inline SVG — n/a
+All POI photos: NASA/JPL-Caltech/MSSS, via https://images.nasa.gov (NASA media guidelines):
+
+- PIA17064 "From Glenelg to Mount Sharp" — Bradbury Landing card — https://images.nasa.gov/details/PIA17064
+- PIA16763 "Curiosity Rover Self Portrait at John Klein Drilling Site" — Yellowknife Bay card — https://images.nasa.gov/details/PIA16763
+- PIA18390 "Curiosity Self-Portrait at Windjana Drilling Site" — The Kimberley card — https://images.nasa.gov/details/PIA18390
+- PIA19114 "Curiosity Rover at Pahrump Hills" — Pahrump Hills card — https://images.nasa.gov/details/PIA19114
+- PIA20844 "Curiosity Self-Portrait at Murray Buttes" — Murray Buttes card — https://images.nasa.gov/details/PIA20844
+- PIA21717 "Wide 'Vera Rubin Ridge' Ahead of Curiosity Mars Rover" — Vera Rubin Ridge card — https://images.nasa.gov/details/PIA21717
+- PIA23047 "Curiosity on the Clay Unit" — Glen Torridon card — https://images.nasa.gov/details/PIA23047
+- PIA24543 "Curiosity's Selfie at Mont Mercou" — Mont Mercou card — https://images.nasa.gov/details/PIA24543
+- Map markers (start/goal, POI pins, hazard triangle) — 3D map markers drawn as inline SVG — n/a
+- Fonts: system font stack, no external fonts. Icons: Unicode characters, no icon library.
 
 ## Use of AI tools
 
-- Claude Code (Anthropic) — frontend map code (`frontend/`), terrain and fallback-route data preparation; reviewed and tested by the team — https://claude.com/claude-code
+- Claude Code (Anthropic, model Claude Opus) — helped write the frontend scaffold, panels, state store, API client, data build scripts (`data/scripts/`) and this list. Team members reviewed and tested the result. The project concept is the team's own.
+- Claude Code (Anthropic) — 3D map (`frontend/src/map/`), terrain preparation and real-terrain demo routes; reviewed and tested by the team — https://claude.com/claude-code

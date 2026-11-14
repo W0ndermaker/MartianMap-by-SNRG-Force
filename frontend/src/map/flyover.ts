@@ -1,9 +1,8 @@
 // "Flyover": the camera follows the route from start to goal (for the demo video).
 
-import { Cartesian3, HeadingPitchRange, Math as CMath, Matrix4, type Viewer } from 'cesium';
-import type { LonLatElev } from '../api/types';
+import { HeadingPitchRange, Math as CMath, Matrix4, type Cartesian3, type Viewer } from 'cesium';
 import { lonLatToCartesian } from './mars';
-import { bearing, cumulative, pointAtDistance } from './routeGeometry';
+import { bearing, cumulative, pointAtDistance, type LonLatElev } from './routeGeometry';
 
 export interface FlyoverOptions {
   /** Total duration in seconds; default keeps the clip inside a 30 s demo video. */

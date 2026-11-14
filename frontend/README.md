@@ -1,88 +1,64 @@
-# Martian Map — frontend (3D map)
+# Martian Map — frontend
 
-3D map of the Gale crater working area for planning a Marswalk: set a Start and a Goal on the terrain,
-get a route around steep slopes from the backend, see slope-coloured segments, hazards and EVA metrics.
+React + Vite + TypeScript + Tailwind + Recharts.
 
 ## Run
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173 ; /api is proxied to http://localhost:8000
-npm run dev:lan    # same, reachable from other devices on the LAN (http://<your-ip>:5173)
-npm run build      # production build in dist/
+cp .env.example .env.local   # point VITE_API_URL at the backend, or leave it empty
+npm run dev                  # http://localhost:5173
 ```
 
-Copy `.env.example` to `.env` to configure:
+Without a backend (or with `VITE_API_URL` empty) the app runs in **offline demo** mode: every request is answered from `../data/` (REMS conditions, points of interest, precomputed demo routes) and the header shows an `Offline demo` badge.
 
-- `VITE_API_BASE` — backend URL for production builds (empty = same origin / dev proxy).
-- `VITE_CESIUM_ION_TOKEN` — optional. Enables the "Cesium Mars" terrain mode (global 3D tileset from Cesium ion,
-  Mars Trek imagery draped on it). Without a token the map uses local terrain built from USGS data (default).
+## Layout
 
-## What is on the map
-
-| Element | Source |
+| Path | What |
 | --- | --- |
-| Base imagery | Mars Trek WMTS: Viking MDIM 2.1 colour mosaic (true colour, 232 m), CTX mosaic, HiRISE Curiosity site mosaic (~0.6 m/px) |
-| Mars colour tint | HiRISE and CTX are grayscale; by default the browser maps gray levels to a Mars palette. Visualisation only, not true colour; toggle in Layers |
-| MOLA shaded relief | Optional layer, MGS MOLA colour hillshade 463 m |
-| 3D terrain | USGS MSL Gale DEM mosaic 1 m (HiRISE stereo), averaged to ~10 m; HRSC-MOLA blended DEM 200 m around it |
-| Elevation / Slope layers | Rendered in the browser from the same HiRISE DEM grid |
-| Thermal layer | Mars Odyssey THEMIS daytime IR mosaic (Mars Trek) |
-| Geology layer | USGS SIM 3292 global geologic map (Mars Trek) |
-| Curiosity path | NASA/JPL MMGIS traverse, simplified to ~1 m |
-| Route, hazards, metrics | Backend `POST /api/route` (see `docs/API_CONTRACT.md`) |
+| `src/api/` | Contract types, API client with offline fallback |
+| `src/store/` | Shared Zustand store (map and panels) |
+| `src/panels/` | Conditions, EVA plan, elevation profile, POI card, layers and slope slider |
+| `src/map/PlaceholderMap.tsx` | Temporary 2D map; developer A replaces it with the 3D scene |
 
-Terrain check: at 24 Curiosity end-of-drive positions the terrain height differs from the rover's localized
-elevation by at most ±1 m (median +0.09 m).
+`@data/*` is an alias for the repository's `data/` folder.
 
-## Backend on real terrain (until DEM loading lands in the backend)
+## Deploy (Vercel)
 
-`backend/app/deps.py` still builds synthetic terrain, so routes ignore the real slopes. To run the unchanged
-backend on the real HiRISE terrain the map shows:
+Root directory: `frontend`. Build command `npm run build`, output `dist`. Set `VITE_API_URL` in the project's environment variables. Keep "Include files outside the root directory" enabled: the build reads `../data`.
+
+## 3D map (developer A)
+
+`src/map/MapView.tsx` replaces the placeholder map. It reads and writes the shared store (`placePoint`,
+`selectPoi`, route/hazards/POI/traverse switches) and adds map-only state in `src/map/mapStore.ts`.
+
+- CesiumJS globe on the Mars sphere; imagery from NASA Mars Trek: Viking MDIM 2.1 colour mosaic (true colour),
+  CTX and HiRISE (~0.6 m/px) mosaics of the Curiosity site. HiRISE/CTX are grayscale; the optional
+  "Mars colour tint" is a visualisation, not true colour.
+- 3D terrain from the USGS HiRISE DEM mosaic (1 m, averaged to ~10 m) plus HRSC-MOLA 200 m around it,
+  in `public/data/terrain/`. Checked against 24 Curiosity end-of-drive elevations: within ±1 m.
+- Map layers: no-go zones (steeper than the max-slope slider), elevation, slope, THEMIS day IR, SIM 3292 geology,
+  MOLA shaded relief. Route coloured by slope, hazard icons, POI pins, Curiosity traverse from `data/`.
+- Hovering the elevation profile highlights the spot on the route. Flyover and Home view buttons.
+- Demo deep links: `/?demo=<n>` (n-th pair of `data/demo_routes.json`) or `/?start=lon,lat&goal=lon,lat`;
+  add `&flyover=1` to start the camera flyover once the route is ready.
+- Optional `VITE_CESIUM_ION_TOKEN` enables the Cesium Mars 3D tileset mode.
+
+`npm run dev` copies Cesium's static assets to `public/cesium/` (git-ignored). For the LAN dev setup, set
+`VITE_API_URL` to the dev-server origin (for example `http://192.168.1.10:5173`): Vite proxies `/api` to
+`http://localhost:8000`, so the backend's CORS list does not need the LAN address.
+
+### Real terrain for the backend (until DEM loading lands there)
+
+`backend/app/deps.py` still builds synthetic terrain. These scripts patch `get_terrain()` with the HiRISE grid,
+without changing backend code:
 
 ```bash
-uv run --no-project --python 3.12 --with-requirements ../backend/requirements.txt \
-    python scripts/real_terrain_backend.py          # serves /api on http://127.0.0.1:8000
+# API on real terrain
+uv run --no-project --python 3.12 --with-requirements ../backend/requirements.txt python scripts/real_terrain_backend.py
+# offline demo routes on real terrain (C's script, unchanged), from the repository root
+uv run --no-project --python 3.12 --with-requirements backend/requirements.txt \
+    python frontend/scripts/run_with_real_terrain.py data/scripts/build_demo_routes.py
 ```
 
-## Offline / fallback
-
-If the backend is unreachable the map keeps working (required by the submission rules):
-
-- working-area bounds fall back to the API contract values;
-- POIs and **precomputed routes** come from `public/data/fallback-routes.json`. They were computed with the team
-  planner (`backend/app/core`, unchanged) on the real HiRISE terrain by `scripts/precompute_routes.py`:
-
-  ```bash
-  uv run --no-project --python 3.12 --with-requirements ../backend/requirements.txt \
-      python scripts/precompute_routes.py --bounds 137.30,-4.78,137.46,-4.56
-  ```
-
-- a click pair is answered with the closest precomputed route, clearly labelled "Precomputed".
-
-Demo deep link: `/?route=<id>` opens a precomputed route; add `&flyover=1` to start the camera flyover
-(ids: `landing-to-sol388`, `pahrump-to-sol1243`, `sol1503-to-sol1889`, `sol2995-to-sol3601`).
-
-## Model assumptions shown in the UI
-
-- Max slope default 20° and flat-ground speed 1.0 m/s are API defaults, not suit specifications.
-- Route colour bands (green / yellow / red at 50% and 75% of the max-slope limit) are a display convention.
-- The slope layer uses a ~20 m baseline (central differences on a 10 m grid), so boulder-scale steps are smoothed.
-
-## Code map (`src/map/`)
-
-- `MapView.tsx` — Cesium viewer, layers, clicks, route/hazard/POI rendering, flyover, deep links
-- `MapHud.tsx` — on-map controls, legends, status, credits
-- `mars.ts` — Mars sphere, coordinate helpers, Mars Trek layer definitions
-- `terrain.ts` — local terrain provider from the height grids
-- `demOverlays.ts` — elevation and slope overlays
-- `routeGeometry.ts`, `flyover.ts` — route geometry and camera flyover
-- `useBackendData.ts` — health / POI bootstrap and route requests with fallback
-
-`src/store/appStore.ts` and `src/api/` are minimal shared stubs so the map runs on its own.
-
-## Use of AI tools
-
-The frontend map code in this folder (`src/`, `scripts/`, this README) and the terrain / fallback data
-preparation were written with the help of Claude Code (Anthropic). The team defined the concept, the API
-contract and the requirements, and reviewed and tested the result.
+`data/demo_routes.json` in this branch was regenerated this way (`health.terrain` = `real`).

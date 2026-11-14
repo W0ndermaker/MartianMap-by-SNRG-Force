@@ -13,7 +13,6 @@ import {
   CustomDataSource,
   DistanceDisplayCondition,
   Ellipsoid,
-  GeoJsonDataSource,
   Globe,
   HeadingPitchRange,
   HeightReference,
@@ -34,11 +33,13 @@ import {
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
-import type { LonLat, LonLatElev } from '../api/types';
-import { loadFallback, type FallbackRoute } from '../api/client';
-import { useAppStore, type LayerId } from '../store/appStore';
-import { elevationOverlay, slopeOverlay } from './demOverlays';
+import traverseUrl from '@data/curiosity_traverse.geojson?url';
+import { offlineDemoPairs } from '../api/offline';
+import type { LonLat, TraverseCollection } from '../api/types';
+import { useAppStore } from '../store/useAppStore';
+import { elevationOverlay, noGoOverlay, slopeOverlay } from './demOverlays';
 import { startFlyover } from './flyover';
+import { useMapStore, type MapLayerId } from './mapStore';
 import MapHud from './MapHud';
 import {
   BOXWORK_ANCHOR,
@@ -50,9 +51,8 @@ import {
   toCesiumLon,
   trekProvider,
 } from './mars';
-import { bandRuns, cumulative, pointAtDistance, type SlopeBand } from './routeGeometry';
+import { bandRuns, cumulative, pointAtDistance, type LonLatElev, type SlopeBand } from './routeGeometry';
 import { createLocalTerrain, type LocalTerrain } from './terrain';
-import { useBackendBootstrap, useRoutePlanner } from './useBackendData';
 
 /** Cesium ion asset id of "Cesium Mars" (secondary source: Cesium Sandcastle "Mars" example; verify in your ion account). */
 const CESIUM_MARS_ASSET_ID = 3644333;
@@ -115,22 +115,36 @@ function labelGraphics(text: string, offsetY = -34) {
   };
 }
 
-export default function MapView() {
-  useBackendBootstrap();
-  useRoutePlanner();
+/** Joins consecutive drive segments of the traverse file into continuous lines (fewer ground polylines). */
+function traverseChains(fc: TraverseCollection): LonLat[][] {
+  const chains: LonLat[][] = [];
+  for (const f of fc.features) {
+    if (f.geometry.type !== 'LineString') continue;
+    const pts = f.geometry.coordinates.map((c) => [c[0], c[1]] as LonLat);
+    if (pts.length < 2) continue;
+    const last = chains[chains.length - 1];
+    const tail = last?.[last.length - 1];
+    if (tail && Math.abs(tail[0] - pts[0][0]) < 2e-6 && Math.abs(tail[1] - pts[0][1]) < 2e-6) last.push(...pts.slice(1));
+    else chains.push(pts);
+  }
+  return chains;
+}
 
+export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const terrainRef = useRef<LocalTerrain | null>(null);
   const sources = useRef<Record<string, CustomDataSource>>({});
-  const overlayLayers = useRef<Partial<Record<LayerId, ImageryLayer>>>({});
+  const overlayLayers = useRef<Partial<Record<MapLayerId, ImageryLayer>>>({});
   const imageryRef = useRef<ImageryLayerCollection | null>(null);
   const baseRef = useRef<ImageryLayer[]>([]);
   const baseTintRef = useRef<boolean | null>(null);
   const [tilesPending, setTilesPending] = useState(0);
-  const tint = useAppStore((s) => s.tint);
-  const curiosityRef = useRef<GeoJsonDataSource | null>(null);
+  const tint = useMapStore((s) => s.tint);
+  const mapLayers = useMapStore((s) => s.layers);
+  const hoverDistM = useMapStore((s) => s.hoverDistM);
   const stopFlyRef = useRef<(() => void) | null>(null);
+  const framedRouteRef = useRef<unknown>(null);
 
   const [mode, setMode] = useState<TerrainMode>('local');
   const [viewerReady, setViewerReady] = useState(0);
@@ -144,19 +158,16 @@ export default function MapView() {
     return () => clearTimeout(t);
   }, [notice]);
   const [flying, setFlying] = useState(false);
-  const [fallbackRoutes, setFallbackRoutes] = useState<FallbackRoute[]>([]);
 
   const health = useAppStore((s) => s.health);
-  const backendOnline = useAppStore((s) => s.backendOnline);
   const poi = useAppStore((s) => s.poi);
   const start = useAppStore((s) => s.start);
   const goal = useAppStore((s) => s.goal);
   const route = useAppStore((s) => s.route);
-  const routePhase = useAppStore((s) => s.routePhase);
+  const routeState = useAppStore((s) => s.routeState);
   const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg);
   const layers = useAppStore((s) => s.layers);
   const selectedPoiId = useAppStore((s) => s.selectedPoiId);
-  const profileHoverIndex = useAppStore((s) => s.profileHoverIndex);
 
   const bounds = health?.bounds ?? null;
 
@@ -240,7 +251,7 @@ export default function MapView() {
     // (CTX/HiRISE are grayscale; optionally tinted, see mars.ts).
     const addBase = (target: ImageryLayerCollection) => {
       target.add(new ImageryLayer(trekProvider(TREK_LAYERS.vikingColor)));
-      const tint = useAppStore.getState().tint;
+      const tint = useMapStore.getState().tint;
       baseRef.current = [TREK_LAYERS.ctx, TREK_LAYERS.hirise].map((l) => {
         const il = new ImageryLayer(trekProvider(l, { tint }));
         target.add(il);
@@ -297,7 +308,6 @@ export default function MapView() {
       stopFlyRef.current = null;
       overlayLayers.current = {};
       imageryRef.current = null;
-      curiosityRef.current = null;
       sources.current = {};
       terrainRef.current = null;
       viewer.destroy();
@@ -375,12 +385,7 @@ export default function MapView() {
         return;
       }
       setNotice(null);
-      if (!st.start || (st.start && st.goal)) {
-        if (st.goal) st.resetPoints();
-        st.setStart(p);
-      } else {
-        st.setGoal(p);
-      }
+      st.placePoint(p); // shared store: start, then goal (plans the route), then a new start
     }, ScreenSpaceEventType.LEFT_CLICK);
     return () => handler.destroy();
   }, [viewerReady, mode]);
@@ -409,6 +414,7 @@ export default function MapView() {
     const ds = sources.current.poi;
     if (!ds) return;
     ds.entities.removeAll();
+    ds.show = layers.poi;
     for (const f of poi?.features ?? []) {
       const pr = f.properties;
       const selected = pr.id === selectedPoiId;
@@ -425,7 +431,7 @@ export default function MapView() {
         properties: { poiId: pr.id },
       });
     }
-  }, [poi, selectedPoiId, viewerReady]);
+  }, [poi, selectedPoiId, layers.poi, viewerReady]);
 
   // ---------- route line coloured by slope ----------
   useEffect(() => {
@@ -434,6 +440,8 @@ export default function MapView() {
     if (!ds || !hz) return;
     ds.entities.removeAll();
     hz.entities.removeAll();
+    ds.show = layers.route;
+    hz.show = layers.hazards;
     const coords = route?.status === 'ok' ? route.path?.coordinates : null;
     if (!coords || coords.length < 2) return;
     const all = coords.map((c) => lonLatToCartesian(c));
@@ -461,19 +469,20 @@ export default function MapView() {
       });
     }
 
-    // frame the new route (skip while a flyover owns the camera)
+    // frame a new route (not on layer toggles, not while a flyover owns the camera)
     const viewer = viewerRef.current;
-    if (viewer && !stopFlyRef.current) {
+    if (viewer && !stopFlyRef.current && framedRouteRef.current !== route) {
+      framedRouteRef.current = route;
       const sphere = BoundingSphere.fromPoints(
         coords.map((c) => lonLatToCartesian(c, terrainRef.current?.heightAt(toCesiumLon(c[0]), c[1]) ?? c[2])),
       );
       const r = Math.max(250, sphere.radius);
       viewer.camera.flyToBoundingSphere(sphere, {
-        offset: new HeadingPitchRange(viewer.camera.heading, CMath.toRadians(-42), r * 2.8),
+        offset: new HeadingPitchRange(viewer.camera.heading, CMath.toRadians(-45), r * 3.6),
         duration: 1.4,
       });
     }
-  }, [route, maxSlopeDeg, viewerReady]);
+  }, [route, maxSlopeDeg, layers.route, layers.hazards, viewerReady]);
 
   // ---------- profile hover highlight ----------
   const routeCum = useMemo(() => {
@@ -485,10 +494,15 @@ export default function MapView() {
     const ds = sources.current.highlight;
     if (!ds) return;
     ds.entities.removeAll();
-    const coords = route?.path?.coordinates;
+    const coords = route?.status === 'ok' ? route.path?.coordinates : null;
     const prof = route?.profile;
-    if (profileHoverIndex == null || !coords || !prof || !routeCum || !prof[profileHoverIndex]) return;
-    const p: LonLatElev = pointAtDistance(coords, routeCum, prof[profileHoverIndex].dist_m);
+    if (hoverDistM == null || !coords || !prof?.length || !routeCum) return;
+    // nearest profile sample for the label
+    const sample = prof.reduce((a, b) => (Math.abs(b.dist_m - hoverDistM) < Math.abs(a.dist_m - hoverDistM) ? b : a));
+    // profile distances follow the route length; scale to our along-path distance
+    const total = routeCum[routeCum.length - 1];
+    const scale = route?.distance_m ? total / route.distance_m : 1;
+    const p: LonLatElev = pointAtDistance(coords, routeCum, hoverDistM * scale);
     ds.entities.add({
       position: lonLatToCartesian(p),
       point: {
@@ -499,9 +513,9 @@ export default function MapView() {
         heightReference: HeightReference.CLAMP_TO_GROUND,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
-      label: labelGraphics(`${Math.round(prof[profileHoverIndex].dist_m)} m · ${prof[profileHoverIndex].slope_deg.toFixed(1)}°`, -22),
+      label: labelGraphics(`${Math.round(sample.dist_m)} m · ${sample.slope_deg.toFixed(1)}°`, -22),
     });
-  }, [profileHoverIndex, route, routeCum, viewerReady]);
+  }, [hoverDistM, route, routeCum, viewerReady]);
 
   // ---------- swap CTX/HiRISE between tinted and grayscale in place ----------
   useEffect(() => {
@@ -525,8 +539,8 @@ export default function MapView() {
     if (!viewer || !imagery) return;
     let cancelled = false;
     const fine = terrainRef.current?.fine ?? null;
-    const want = (id: LayerId) => layers[id];
-    const ensure = async (id: Exclude<LayerId, 'curiosity'>) => {
+    const want = (id: MapLayerId) => mapLayers[id];
+    const ensure = async (id: MapLayerId) => {
       const existing = overlayLayers.current[id];
       if (!want(id)) {
         if (existing) {
@@ -541,55 +555,70 @@ export default function MapView() {
       else if (id === 'mola') provider = trekProvider(TREK_LAYERS.molaShade);
       else if (id === 'geology') provider = trekProvider(TREK_LAYERS.geology);
       else if (!fine) {
-        setNotice('Elevation and slope layers need the local HiRISE terrain, which is not loaded.');
+        setNotice('Elevation, slope and no-go layers need the local HiRISE terrain, which is not loaded.');
         return;
-      } else provider = id === 'elevation' ? await elevationOverlay(fine) : await slopeOverlay(fine);
+      } else if (id === 'nogo') provider = await noGoOverlay(fine, useAppStore.getState().maxSlopeDeg);
+      else provider = id === 'elevation' ? await elevationOverlay(fine) : await slopeOverlay(fine);
       if (cancelled || overlayLayers.current[id] || viewer.isDestroyed()) return;
-      const layer = new ImageryLayer(provider, { alpha: id === 'geology' ? 0.55 : id === 'mola' ? 0.6 : 0.7 });
+      const layer = new ImageryLayer(provider, { alpha: id === 'geology' ? 0.55 : id === 'mola' ? 0.6 : id === 'nogo' ? 0.85 : 0.7 });
       imagery.add(layer);
       overlayLayers.current[id] = layer;
     };
-    void Promise.all((['elevation', 'slope', 'thermal', 'geology', 'mola'] as const).map(ensure));
+    void Promise.all((['elevation', 'slope', 'thermal', 'geology', 'mola', 'nogo'] as const).map(ensure));
 
-    // Curiosity traverse (vector, clamped to the ground)
-    (async () => {
-      if (want('curiosity')) {
-        if (curiosityRef.current) {
-          curiosityRef.current.show = true;
-          return;
-        }
-        try {
-          const ds = await GeoJsonDataSource.load(`${import.meta.env.BASE_URL}data/gale_traverse.geojson`, {
-            clampToGround: true,
-            stroke: Color.fromCssColorString('#ff7b39'),
-            strokeWidth: 3,
-          });
-          if (cancelled || viewer.isDestroyed()) return;
-          await viewer.dataSources.add(ds);
-          curiosityRef.current = ds;
-        } catch {
-          setNotice('Curiosity traverse file could not be loaded.');
-        }
-      } else if (curiosityRef.current) {
-        curiosityRef.current.show = false;
-      }
-    })();
     return () => {
       cancelled = true;
     };
-  }, [layers, viewerReady]);
+  }, [mapLayers, viewerReady]);
 
-  // ---------- fallback routes list (offline mode) ----------
+  // no-go mask follows the max-slope slider: rebuild it when the limit changes
   useEffect(() => {
-    if (backendOnline === false) void loadFallback().then((f) => setFallbackRoutes(f?.routes ?? []));
-  }, [backendOnline]);
+    const imagery = imageryRef.current;
+    const old = overlayLayers.current.nogo;
+    const fine = terrainRef.current?.fine;
+    if (!imagery || !old || !fine) return;
+    let cancelled = false;
+    void noGoOverlay(fine, maxSlopeDeg).then((provider) => {
+      if (cancelled || overlayLayers.current.nogo !== old || imagery.isDestroyed()) return;
+      const index = imagery.indexOf(old);
+      const fresh = new ImageryLayer(provider, { alpha: 0.85 });
+      imagery.remove(old, true);
+      imagery.add(fresh, index >= 0 ? index : undefined);
+      overlayLayers.current.nogo = fresh;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [maxSlopeDeg]);
 
-  const pickFallback = useCallback((r: FallbackRoute) => {
-    const st = useAppStore.getState();
-    st.setRoute('ok', r.response, 'Route service is offline. Showing a precomputed route.', 'fallback', r.name);
-    st.setStart(r.start);
-    st.setGoal(r.goal);
-  }, []);
+  // ---------- Curiosity traverse (file prepared by developer C) ----------
+  useEffect(() => {
+    const ds = sources.current.tracks;
+    if (!ds) return;
+    let cancelled = false;
+    ds.show = layers.traverse;
+    if (ds.entities.values.length) return;
+    fetch(traverseUrl)
+      .then((r) => r.json() as Promise<TraverseCollection>)
+      .then((fc) => {
+        if (cancelled) return;
+        const color = Color.fromCssColorString('#ff7b39');
+        for (const chain of traverseChains(fc)) {
+          ds.entities.add({ polyline: { positions: chain.map((p) => lonLatToCartesian(p)), clampToGround: true, width: 3, material: color } });
+        }
+      })
+      .catch(() => setNotice('Curiosity traverse file could not be loaded.'));
+    return () => {
+      cancelled = true;
+    };
+  }, [layers.traverse, viewerReady]);
+
+  // ---------- route problems: say it on the map too ----------
+  useEffect(() => {
+    if (routeState === 'error') setNotice('Route planning failed. Try again.');
+    else if (route && route.status !== 'ok')
+      setNotice(route.reason ?? (route.status === 'out_of_bounds' ? 'A point is outside the working area.' : 'No passable route.'));
+  }, [route, routeState]);
 
   // ---------- flyover ----------
   const toggleFlyover = useCallback(() => {
@@ -612,30 +641,45 @@ export default function MapView() {
   }, []);
 
   useEffect(() => {
-    if (routePhase !== 'ok' && stopFlyRef.current) stopFlyRef.current();
-  }, [routePhase]);
+    if (stopFlyRef.current && route?.status !== 'ok') stopFlyRef.current();
+  }, [route]);
 
-  // ---------- deep link for demos: ?route=<precomputed id>[&flyover=1] ----------
+  // ---------- deep links for demos: ?demo=<n>  or  ?start=lon,lat&goal=lon,lat ; add &flyover=1 ----------
   const deepLinkDone = useRef(false);
+  const flyWhenReady = useRef(false);
   useEffect(() => {
     if (!viewerReady || !health || deepLinkDone.current) return;
     const q = new URLSearchParams(window.location.search);
-    const id = q.get('route');
-    if (!id) return;
+    const parse = (v: string | null): LonLat | null => {
+      const n = v?.split(',').map(Number);
+      return n && n.length === 2 && n.every(Number.isFinite) ? [n[0], n[1]] : null;
+    };
+    const demo = q.get('demo');
+    const fromParams = parse(q.get('start')) && parse(q.get('goal'))
+      ? Promise.resolve({ start: parse(q.get('start')) as LonLat, goal: parse(q.get('goal')) as LonLat })
+      : demo !== null
+        ? offlineDemoPairs().then((pairs) => pairs[Number(demo)] ?? null)
+        : null;
+    if (!fromParams) return;
     deepLinkDone.current = true;
-    void loadFallback().then((f) => {
-      const r = f?.routes.find((x) => x.id === id);
-      if (!r) {
-        setNotice(`Unknown precomputed route "${id}".`);
+    flyWhenReady.current = q.get('flyover') === '1';
+    void fromParams.then((pair) => {
+      if (!pair) {
+        setNotice(`Unknown demo route "${demo}".`);
         return;
       }
       const st = useAppStore.getState();
-      st.setRoute('ok', r.response, null, 'fallback', r.name);
-      st.setStart(r.start);
-      st.setGoal(r.goal);
-      if (q.get('flyover') === '1') setTimeout(() => toggleFlyover(), 2500);
+      st.placePoint(pair.start);
+      st.placePoint(pair.goal);
     });
-  }, [viewerReady, health, toggleFlyover]);
+  }, [viewerReady, health]);
+
+  useEffect(() => {
+    if (!flyWhenReady.current || routeState !== 'ready' || route?.status !== 'ok') return;
+    flyWhenReady.current = false;
+    const t = setTimeout(() => toggleFlyover(), 2200);
+    return () => clearTimeout(t);
+  }, [route, routeState, toggleFlyover]);
 
   // keep the camera unlocked if the component re-renders mid-flight after a mode switch
   useEffect(() => () => viewerRef.current?.camera.lookAtTransform(Matrix4.IDENTITY), []);
@@ -654,9 +698,10 @@ export default function MapView() {
         flying={flying}
         onFlyover={toggleFlyover}
         onHome={() => flyHome()}
-        fallbackRoutes={fallbackRoutes}
+        canFly={route?.status === 'ok' && !!route.path}
+        routeLoading={routeState === 'loading'}
+        hasRoute={route?.status === 'ok' && layers.route}
         tilesPending={tilesPending}
-        onPickFallback={pickFallback}
       />
     </div>
   );

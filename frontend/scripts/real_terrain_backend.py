@@ -19,7 +19,7 @@ sys.path.insert(0, str(HERE.parent.parent / "backend"))
 
 import uvicorn  # noqa: E402
 
-from precompute_routes import DEFAULT_BOUNDS, build_real_terrain  # noqa: E402
+from real_terrain import DEFAULT_BOUNDS, build_real_terrain, patch_backend  # noqa: E402
 
 
 def main():
@@ -33,16 +33,7 @@ def main():
 
     _, terrain = build_real_terrain(bounds, args.cell)
 
-    import app.api.health as health_api
-    import app.api.route as route_api
-    import app.deps as deps
-
-    def get_real_terrain():
-        return terrain
-
-    # The API modules imported get_terrain by name, so patch every reference.
-    for mod in (deps, health_api, route_api):
-        mod.get_terrain = get_real_terrain
+    patch_backend(terrain)
 
     from app.main import app
 

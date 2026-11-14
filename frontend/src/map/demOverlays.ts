@@ -77,9 +77,14 @@ export function elevationOverlay(g: HeightGrid) {
   return toProvider(g, rgba);
 }
 
-export function slopeOverlay(g: HeightGrid) {
+const slopeCache = new WeakMap<HeightGrid, Float32Array>();
+
+/** Slope in degrees per grid cell (central differences; NaN on no-data), cached per grid. */
+export function slopeDegrees(g: HeightGrid): Float32Array {
+  const cached = slopeCache.get(g);
+  if (cached) return cached;
   const h = heights(g);
-  const rgba = new Uint8ClampedArray(g.width * g.height * 4);
+  const out = new Float32Array(g.width * g.height);
   const midLat = ((g.north + g.south) / 2) * (Math.PI / 180);
   const dxM = ((g.east - g.west) / (g.width - 1)) * (Math.PI / 180) * MARS_RADIUS_M * Math.cos(midLat);
   const dyM = ((g.north - g.south) / (g.height - 1)) * (Math.PI / 180) * MARS_RADIUS_M;
@@ -88,11 +93,31 @@ export function slopeOverlay(g: HeightGrid) {
     for (let x = 0; x < g.width; x++) {
       const gx = (at(x + 1, y) - at(x - 1, y)) / (2 * dxM);
       const gy = (at(x, y + 1) - at(x, y - 1)) / (2 * dyM);
-      if (Number.isNaN(gx) || Number.isNaN(gy)) continue;
-      const deg = (Math.atan(Math.hypot(gx, gy)) * 180) / Math.PI;
-      const [r, gg, b] = lerpColor(SLOPE_RAMP, deg);
-      rgba.set([r, gg, b, 255], (y * g.width + x) * 4);
+      out[y * g.width + x] = (Math.atan(Math.hypot(gx, gy)) * 180) / Math.PI;
     }
+  }
+  slopeCache.set(g, out);
+  return out;
+}
+
+export function slopeOverlay(g: HeightGrid) {
+  const slope = slopeDegrees(g);
+  const rgba = new Uint8ClampedArray(g.width * g.height * 4);
+  for (let i = 0; i < slope.length; i++) {
+    if (Number.isNaN(slope[i])) continue;
+    const [r, gg, b] = lerpColor(SLOPE_RAMP, slope[i]);
+    rgba.set([r, gg, b, 255], i * 4);
   }
   return toProvider(g, rgba);
 }
+
+/** Cells steeper than the max-slope limit (impassable for the route planner), red; everything else clear. */
+export function noGoOverlay(g: HeightGrid, maxSlopeDeg: number) {
+  const slope = slopeDegrees(g);
+  const rgba = new Uint8ClampedArray(g.width * g.height * 4);
+  for (let i = 0; i < slope.length; i++) {
+    if (slope[i] > maxSlopeDeg) rgba.set([229, 42, 42, 190], i * 4);
+  }
+  return toProvider(g, rgba);
+}
+

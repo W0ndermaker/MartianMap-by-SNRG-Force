@@ -1,210 +1,171 @@
-// On-map controls and status (developer A): hints, route state, layer toggles, legends, credits.
-// Side panels and charts belong to other developers; this stays compact and over the map.
+// On-map controls of the 3D map (developer A): camera actions, map-only layers and legends, status, credits.
+// EVA metrics, POI cards, the profile chart and the route/hazard/POI/traverse switches are in the side panels
+// (developer C), so they are not repeated here.
 
-import type { FallbackRoute } from '../api/client';
-import { useAppStore, type LayerId } from '../store/appStore';
-import { ELEVATION_RAMP, SLOPE_RAMP, rampCss } from './demOverlays';
-import type { TerrainMode } from './MapView';
-import { BAND_SPLIT } from './routeGeometry';
+import { useAppStore } from '../store/useAppStore'
+import { ELEVATION_RAMP, SLOPE_RAMP, rampCss } from './demOverlays'
+import { useMapStore, type MapLayerId } from './mapStore'
+import type { TerrainMode } from './MapView'
+import { BAND_SPLIT } from './routeGeometry'
 
 interface Props {
-  mode: TerrainMode;
-  ionAvailable: boolean;
-  onModeChange: (m: TerrainMode) => void;
-  terrainNote: string | null;
-  elevRange: [number, number] | null;
-  notice: string | null;
-  onDismissNotice: () => void;
-  flying: boolean;
-  onFlyover: () => void;
-  onHome: () => void;
-  fallbackRoutes: FallbackRoute[];
-  onPickFallback: (r: FallbackRoute) => void;
-  tilesPending: number;
+  mode: TerrainMode
+  ionAvailable: boolean
+  onModeChange: (m: TerrainMode) => void
+  terrainNote: string | null
+  elevRange: [number, number] | null
+  notice: string | null
+  onDismissNotice: () => void
+  flying: boolean
+  canFly: boolean
+  onFlyover: () => void
+  onHome: () => void
+  routeLoading: boolean
+  hasRoute: boolean
+  tilesPending: number
 }
 
-const LAYER_LABELS: { id: LayerId; label: string; hint: string }[] = [
+const MAP_LAYERS: { id: MapLayerId; label: string; hint: string }[] = [
+  { id: 'nogo', label: 'No-go zones (steeper than max slope)', hint: 'Cells the route planner treats as impassable at the current max slope' },
   { id: 'elevation', label: 'Elevation', hint: 'USGS HiRISE DEM, ~10 m grid' },
   { id: 'slope', label: 'Slope', hint: 'Computed from the HiRISE DEM' },
   { id: 'thermal', label: 'Thermal (THEMIS day IR)', hint: 'Mars Odyssey THEMIS, 100 m' },
   { id: 'geology', label: 'Geology (USGS SIM 3292)', hint: 'Global geologic map, 1:20M' },
   { id: 'mola', label: 'MOLA shaded relief', hint: 'MGS MOLA colour hillshade, 463 m' },
-  { id: 'curiosity', label: 'Curiosity path', hint: 'NASA/JPL rover traverse' },
-];
+]
 
-const panel = 'pointer-events-auto rounded-xl border border-white/10 bg-neutral-950/80 text-neutral-100 shadow-lg backdrop-blur';
-
-function fmt(v: number | null | undefined, digits = 0, unit = ''): string {
-  return v == null || Number.isNaN(v) ? '—' : `${v.toFixed(digits)}${unit}`;
-}
+const panel =
+  'pointer-events-auto rounded-lg border border-white/10 bg-stone-950/80 text-stone-100 shadow-lg backdrop-blur'
 
 export default function MapHud(p: Props) {
-  const health = useAppStore((s) => s.health);
-  const backendOnline = useAppStore((s) => s.backendOnline);
-  const start = useAppStore((s) => s.start);
-  const goal = useAppStore((s) => s.goal);
-  const route = useAppStore((s) => s.route);
-  const routePhase = useAppStore((s) => s.routePhase);
-  const routeMessage = useAppStore((s) => s.routeMessage);
-  const routeSource = useAppStore((s) => s.routeSource);
-  const routeLabel = useAppStore((s) => s.routeLabel);
-  const layers = useAppStore((s) => s.layers);
-  const toggleLayer = useAppStore((s) => s.toggleLayer);
-  const resetPoints = useAppStore((s) => s.resetPoints);
-  const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg);
-  const tint = useAppStore((s) => s.tint);
-  const setTint = useAppStore((s) => s.setTint);
-  const setMaxSlopeDeg = useAppStore((s) => s.setMaxSlopeDeg);
-
-  const hint = !health
-    ? 'Loading the working area…'
-    : !start
-      ? 'Click inside the dashed frame to set the Start point.'
-      : !goal
-        ? 'Click to set the Goal point.'
-        : routePhase === 'loading'
-          ? 'Planning a route around steep slopes…'
-          : 'Click again to start a new route.';
-
-  const isError = routePhase === 'no_route' || routePhase === 'out_of_bounds' || routePhase === 'error';
-  const mid = Math.round(maxSlopeDeg * BAND_SPLIT.mid);
-  const high = Math.round(maxSlopeDeg * BAND_SPLIT.high);
+  const layers = useMapStore((s) => s.layers)
+  const toggleLayer = useMapStore((s) => s.toggleLayer)
+  const tint = useMapStore((s) => s.tint)
+  const setTint = useMapStore((s) => s.setTint)
+  const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg)
+  const mid = Math.round(maxSlopeDeg * BAND_SPLIT.mid)
+  const high = Math.round(maxSlopeDeg * BAND_SPLIT.high)
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex select-none flex-col justify-between p-3 text-sm">
-      {/* top row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className={`${panel} max-w-md px-4 py-3`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-base font-semibold tracking-wide">Martian Map · Gale crater</h1>
-            {backendOnline === false && (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Offline · precomputed routes</span>
-            )}
-            {health?.terrain === 'synthetic' && (
-              <span className="rounded-full bg-fuchsia-500/25 px-2 py-0.5 text-xs font-medium text-fuchsia-200">Synthetic terrain (demo)</span>
-            )}
-          </div>
-          {p.tilesPending > 0 && (
-            <p className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
-              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-400 border-t-transparent" />
-              Loading imagery… ({p.tilesPending} tiles from NASA Mars Trek)
-            </p>
-          )}
-          <p className="mt-1 flex items-center gap-2 text-neutral-300">
-            {routePhase === 'loading' && (
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" aria-label="Loading" />
-            )}
-            {hint}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <button className="rounded-md bg-white/10 px-3 py-1 hover:bg-white/20 disabled:opacity-40" onClick={resetPoints}
-              disabled={!start && !goal}>Reset points</button>
-            <button className="rounded-md bg-sky-600 px-3 py-1 font-medium hover:bg-sky-500 disabled:opacity-40" onClick={p.onFlyover}
-              disabled={routePhase !== 'ok' || !route?.path}>{p.flying ? 'Stop flyover' : 'Flyover'}</button>
-            <button className="rounded-md bg-white/10 px-3 py-1 hover:bg-white/20" onClick={p.onHome}>Home view</button>
-            <label className="flex items-center gap-1 text-neutral-300" title="Steeper cells are impassable for the route planner. Default 20° from the API contract (model assumption).">
-              Max slope
-              <select className="rounded bg-white/10 px-1 py-0.5" value={maxSlopeDeg}
-                onChange={(e) => setMaxSlopeDeg(Number(e.target.value))}>
-                {[10, 15, 20, 25, 30].map((v) => <option key={v} value={v} className="bg-neutral-900">{v}°</option>)}
-              </select>
-            </label>
-          </div>
-          {p.ionAvailable && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-neutral-300">
-              Terrain:
-              {(['local', 'ion'] as const).map((m) => (
-                <button key={m} onClick={() => p.onModeChange(m)}
-                  className={`rounded px-2 py-0.5 ${p.mode === m ? 'bg-sky-600 text-white' : 'bg-white/10 hover:bg-white/20'}`}>
-                  {m === 'local' ? 'HiRISE local' : 'Cesium Mars'}
+    <div className="pointer-events-none absolute inset-0 flex select-none flex-col justify-between p-2 text-xs">
+      <div className="flex items-start justify-between gap-2">
+        {/* camera + status */}
+        <div className={`${panel} flex flex-col gap-1.5 px-2.5 py-2`}>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              className="rounded-md bg-orange-600 px-2.5 py-1 font-medium hover:bg-orange-500 disabled:opacity-40"
+              onClick={p.onFlyover}
+              disabled={!p.canFly}
+              title="Camera follows the route from start to goal"
+            >
+              {p.flying ? 'Stop flyover' : 'Flyover'}
+            </button>
+            <button type="button" className="rounded-md bg-white/10 px-2.5 py-1 hover:bg-white/20" onClick={p.onHome}>
+              Home view
+            </button>
+            {p.ionAvailable &&
+              (['local', 'ion'] as const).map((m) => (
+                <button
+                  type="button"
+                  key={m}
+                  onClick={() => p.onModeChange(m)}
+                  className={`rounded-md px-2 py-1 ${p.mode === m ? 'bg-sky-700' : 'bg-white/10 hover:bg-white/20'}`}
+                >
+                  {m === 'local' ? 'HiRISE terrain' : 'Cesium Mars'}
                 </button>
               ))}
-            </div>
+          </div>
+          {p.routeLoading && (
+            <span className="flex items-center gap-2 text-sky-300">
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-sky-300 border-t-transparent" />
+              Planning route…
+            </span>
+          )}
+          {p.tilesPending > 0 && (
+            <span className="flex items-center gap-2 text-stone-400">
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-stone-400 border-t-transparent" />
+              Loading imagery ({p.tilesPending} tiles)
+            </span>
           )}
         </div>
 
-        {/* layers */}
-        <div className={`${panel} w-64 px-4 py-3`}>
-          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-400">Layers</h2>
-          <p className="text-xs text-neutral-400">Base: HiRISE + CTX on Viking colour mosaic</p>
-          <label className="mb-2 mt-1 flex cursor-pointer items-start gap-2 py-0.5"
-            title="HiRISE and CTX are grayscale. The tint maps gray levels to a Mars palette; it is not true colour.">
-            <input type="checkbox" className="mt-0.5 accent-sky-500" checked={tint} onChange={() => setTint(!tint)} />
-            <span>Mars colour tint <span className="text-xs text-neutral-500">(visual, not true colour)</span></span>
+        {/* map-only layers */}
+        <div className={`${panel} w-56 px-3 py-2`}>
+          <div className="mb-1 text-[11px] uppercase tracking-wide text-stone-400">Map layers</div>
+          <label
+            className="flex cursor-pointer items-start gap-2 py-0.5"
+            title="HiRISE and CTX are grayscale. The tint maps gray levels to a Mars palette; it is not true colour."
+          >
+            <input type="checkbox" className="mt-0.5 accent-orange-500" checked={tint} onChange={() => setTint(!tint)} />
+            <span>
+              Mars colour tint <span className="text-stone-500">(visual, not true colour)</span>
+            </span>
           </label>
-          {LAYER_LABELS.map((l) => (
+          {MAP_LAYERS.map((l) => (
             <label key={l.id} className="flex cursor-pointer items-start gap-2 py-0.5" title={l.hint}>
-              <input type="checkbox" className="mt-0.5 accent-sky-500" checked={layers[l.id]} onChange={() => toggleLayer(l.id)} />
+              <input type="checkbox" className="mt-0.5 accent-orange-500" checked={layers[l.id]} onChange={() => toggleLayer(l.id)} />
               <span>{l.label}</span>
             </label>
           ))}
+          {layers.nogo && (
+            <div className="mt-1 flex items-center gap-2 text-stone-400">
+              <i className="inline-block h-2.5 w-4 rounded-sm bg-[#e52a2a]/75" /> steeper than {maxSlopeDeg}°
+            </div>
+          )}
           {layers.elevation && p.elevRange && (
-            <div className="mt-2">
+            <div className="mt-1.5">
               <div className="h-2 rounded" style={{ background: rampCss(ELEVATION_RAMP) }} />
-              <div className="flex justify-between text-xs text-neutral-400">
-                <span>{Math.round(p.elevRange[0])} m</span><span>{Math.round(p.elevRange[1])} m</span>
+              <div className="flex justify-between text-stone-400">
+                <span>{Math.round(p.elevRange[0])} m</span>
+                <span>{Math.round(p.elevRange[1])} m</span>
               </div>
             </div>
           )}
           {layers.slope && (
-            <div className="mt-2">
+            <div className="mt-1.5">
               <div className="h-2 rounded" style={{ background: rampCss(SLOPE_RAMP) }} />
-              <div className="flex justify-between text-xs text-neutral-400"><span>0°</span><span>15°</span><span>30°</span><span>45°+</span></div>
-              <p className="text-[11px] leading-tight text-neutral-500">~20 m baseline: boulder-scale steps are smoothed.</p>
-            </div>
-          )}
-          {layers.curiosity && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-neutral-400">
-              <span className="inline-block h-1 w-6 rounded bg-[#ff7b39]" /> Curiosity traverse
+              <div className="flex justify-between text-stone-400">
+                <span>0°</span>
+                <span>15°</span>
+                <span>30°</span>
+                <span>45°+</span>
+              </div>
+              <p className="text-[10px] leading-tight text-stone-500">~20 m baseline: boulder-scale steps are smoothed.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* bottom area */}
-      <div className="flex flex-col gap-2">
-        {(p.notice || (isError && routeMessage)) && (
-          <div className={`${panel} flex items-start gap-3 self-center border-red-400/40 px-4 py-2`} role="alert">
-            <span className="text-red-300">{p.notice ?? routeMessage}</span>
-            {p.notice && <button className="text-neutral-400 hover:text-white" onClick={p.onDismissNotice} aria-label="Dismiss">✕</button>}
+      <div className="flex flex-col items-center gap-1.5">
+        {p.notice && (
+          <div className={`${panel} flex items-start gap-3 border-red-400/40 px-3 py-1.5`} role="alert">
+            <span className="text-red-300">{p.notice}</span>
+            <button type="button" className="text-stone-400 hover:text-white" onClick={p.onDismissNotice} aria-label="Dismiss">
+              ✕
+            </button>
           </div>
         )}
-
-        {backendOnline === false && p.fallbackRoutes.length > 0 && (
-          <div className={`${panel} flex flex-wrap items-center gap-2 self-center px-4 py-2`}>
-            <span className="text-neutral-300">Precomputed routes:</span>
-            {p.fallbackRoutes.map((r) => (
-              <button key={r.id} className="rounded-md bg-white/10 px-2 py-0.5 hover:bg-white/20" onClick={() => p.onPickFallback(r)}>{r.name}</button>
-            ))}
+        {p.hasRoute && (
+          <div
+            className={`${panel} flex items-center gap-2 px-3 py-1 text-stone-300`}
+            title="Bands are relative to the max-slope limit; the split points are a display convention (model assumption)."
+          >
+            Route slope:
+            <i className="inline-block h-1.5 w-4 rounded bg-[#2ea043]" />&lt;{mid}°
+            <i className="inline-block h-1.5 w-4 rounded bg-[#f0b429]" />
+            {mid}–{high}°
+            <i className="inline-block h-1.5 w-4 rounded bg-[#e5484d]" />&gt;{high}°
+            <span className="text-stone-500">(model assumption)</span>
           </div>
         )}
-
-        {routePhase === 'ok' && route && (
-          <div className={`${panel} flex flex-wrap items-center gap-x-5 gap-y-1 self-center px-4 py-2`}>
-            {routeSource === 'fallback' && (
-              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Precomputed{routeLabel ? `: ${routeLabel}` : ''}</span>
-            )}
-            <span>Distance <b>{fmt(route.distance_m != null ? route.distance_m / 1000 : null, 2, ' km')}</b></span>
-            <span>Time <b>{fmt(route.duration_min, 0, ' min')}</b></span>
-            <span>O₂ used <b>{fmt(route.o2_used_pct, 0, '%')}</b></span>
-            <span>Max slope <b>{fmt(route.max_slope_deg, 1, '°')}</b></span>
-            <span>Climb <b>{fmt(route.ascent_m, 0, ' m')}</b> / descent <b>{fmt(route.descent_m, 0, ' m')}</b></span>
-            <span className="flex items-center gap-2 text-xs text-neutral-400" title="Bands are relative to the max slope limit; the split points are a display convention (model assumption).">
-              <i className="inline-block h-1.5 w-4 rounded bg-[#2ea043]" />&lt;{mid}°
-              <i className="inline-block h-1.5 w-4 rounded bg-[#f0b429]" />{mid}–{high}°
-              <i className="inline-block h-1.5 w-4 rounded bg-[#e5484d]" />&gt;{high}°
-              <span className="text-neutral-500">(model assumption)</span>
-            </span>
-          </div>
-        )}
-
-        <footer className={`${panel} self-stretch px-3 py-1.5 text-[11px] leading-snug text-neutral-400`}>
-          Imagery and data: NASA/JPL/USGS (Viking MDIM 2.1) · NASA/JPL/University of Arizona (HiRISE) · NASA/JPL/MSSS (CTX) · NASA/JPL/ASU (THEMIS) ·
-          NASA/GSFC (MOLA) · ESA/DLR/FU Berlin (HRSC) · USGS Astrogeology (DEMs, SIM 3292 geologic map) ·
-          Curiosity traverse NASA/JPL-Caltech · tiles via NASA Mars Trek (trek.nasa.gov).
-          {p.terrainNote && <span className="block text-neutral-500">{p.terrainNote}</span>}
-        </footer>
+        <div className={`${panel} self-stretch px-2.5 py-1 text-[10px] leading-snug text-stone-400`}>
+          Imagery: NASA/JPL/USGS (Viking MDIM 2.1) · NASA/JPL/University of Arizona (HiRISE) · NASA/JPL/MSSS (CTX) ·
+          NASA/JPL/ASU (THEMIS) · NASA/GSFC (MOLA) · USGS (SIM 3292), via NASA Mars Trek. Terrain: USGS Astrogeology
+          DEMs (HiRISE, HRSC-MOLA; ESA/DLR/FU Berlin).
+          {p.terrainNote && <span className="block text-stone-500">{p.terrainNote}</span>}
+        </div>
       </div>
     </div>
-  );
+  )
 }

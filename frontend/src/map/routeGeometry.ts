@@ -1,8 +1,21 @@
 // Pure geometry helpers for routes (no Cesium objects): distances along the path, slope bands,
 // position at a given distance. Distances on the Mars sphere.
 
-import { distanceM } from '../api/client';
-import type { LonLatElev, ProfilePoint } from '../api/types';
+import type { LonLat, ProfilePoint } from '../api/types';
+
+/** Path vertex from the API: [longitude east, latitude, elevation m]. */
+export type LonLatElev = [number, number, number];
+
+const R_MARS = 3396190;
+
+/** Great-circle distance on the Mars sphere, metres. */
+export function distanceM(a: LonLat, b: LonLat): number {
+  const rad = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * rad;
+  const dLon = (b[0] - a[0]) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R_MARS * Math.asin(Math.min(1, Math.sqrt(h)));
+}
 
 export type SlopeBand = 'low' | 'mid' | 'high';
 
