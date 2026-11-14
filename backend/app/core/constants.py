@@ -66,10 +66,12 @@ EVA_MAX_DURATION_MIN = 480.0
 ROUGHNESS_REF_M = 1.0
 ROUGHNESS_MAX_FACTOR = 4.0
 
-# Cells near Curiosity's driven path are known to be trafficable, so they cost less.
-# ASSUMPTION: 30 % cheaper within 15 m of the path (rover track width plus localisation error).
-TRAVERSE_BUFFER_M = 15.0
-TRAVERSE_COST_FACTOR = 0.7
+# Cells near Curiosity's driven path are known to be trafficable, so they cost less and routes follow
+# the rover's track like a road. ASSUMPTION: half the cost within 10 m of the path (one grid cell:
+# track width plus localisation error). Tuned so routes stay within 10 m of the track for >95 % of
+# their length on the demo routes, instead of cutting across its bends.
+TRAVERSE_BUFFER_M = 10.0
+TRAVERSE_COST_FACTOR = 0.5
 
 # ASSUMPTION: a path cell is hazardous at this fraction of the allowed maximum slope.
 HAZARD_SLOPE_FRACTION = 0.8

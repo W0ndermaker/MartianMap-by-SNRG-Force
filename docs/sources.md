@@ -55,7 +55,7 @@ Format: `- Name — what we used it for — link — license (if known)`
 - Tobler's hiking function — walking speed vs slope (ASSUMPTION: Earth-based, used as an approximation for Mars EVA) — Tobler, W. (1993), Three presentations on geographical analysis and modeling — n/a
 - Any-angle path smoothing ("string pulling") — straightens the 8-connected grid path only where every crossed cell is passable and the straight segment is not slower — standard post-processing for grid path planning — n/a
 - Terrain roughness = RMS of elevation minus its 3x3 mean (10 m grid) — extra route cost; weight 1 m of relief = 2x cost (ASSUMPTION, no suited-EVA source) — n/a
-- Curiosity traverse as known-trafficable corridor — 30 % cheaper within 15 m of the driven path (ASSUMPTION) — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_traverse.json — NASA/JPL-Caltech
+- Curiosity traverse as known-trafficable corridor (routes follow it like a road) — half the travel cost within 10 m of the driven path (ASSUMPTION) — https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_traverse.json — NASA/JPL-Caltech
 - SciPy (ndimage filters) — roughness and corridor mask in the backend — https://scipy.org — BSD-3-Clause
 - Mars equatorial radius 3,396,190 m — sphere for coordinate conversion — IAU WGCCRE report — n/a
 
