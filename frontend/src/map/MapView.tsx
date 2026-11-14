@@ -137,6 +137,12 @@ export default function MapView() {
   const [terrainNote, setTerrainNote] = useState<string | null>(null);
   const [elevRange, setElevRange] = useState<[number, number] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // notices are hints: hide them automatically
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [flying, setFlying] = useState(false);
   const [fallbackRoutes, setFallbackRoutes] = useState<FallbackRoute[]>([]);
 
@@ -353,6 +359,8 @@ export default function MapView() {
         st.selectPoi(poiId);
         return;
       }
+      // Zoomed out to a regional / globe view: clicks are for looking around, not for placing points.
+      if (viewer.camera.positionCartographic.height > 150000) return;
       let cart: Cartesian3 | undefined;
       if (mode === 'ion' && viewer.scene.pickPositionSupported) cart = viewer.scene.pickPosition(ev.position);
       if (!defined(cart)) {
