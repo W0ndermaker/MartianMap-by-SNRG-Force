@@ -7,6 +7,7 @@ import type {
   Health,
   LonLat,
   PoiCollection,
+  RiskLevel,
   RouteRequest,
   RouteResponse,
 } from './types'
@@ -43,7 +44,35 @@ export async function offlineRoute(request: RouteRequest): Promise<RouteResponse
       samePoint(r.request.goal, request.goal) &&
       (request.max_slope_deg === undefined || r.request.max_slope_deg === request.max_slope_deg),
   )
-  return match ? match.response : { status: 'no_route', reason: OFFLINE_ROUTE_REASON }
+  if (!match) return { status: 'no_route', reason: OFFLINE_ROUTE_REASON }
+  // Demo routes were computed without a sol: apply the selected sol's risk to the verdict here,
+  // with the same rule as the backend (red: NO-GO; yellow or unknown: at least CAUTION).
+  if (request.sol === undefined) return match.response
+  const conditions = await offlineConditions(request.sol)
+  return withWeather(match.response, conditions.risk_level, conditions.sol)
+}
+
+/** The route verdict adjusted for the surface risk of a sol (mirrors backend core/verdict.py). */
+export function withWeather(route: RouteResponse, risk: RiskLevel, sol: number): RouteResponse {
+  if (route.status !== 'ok' || !route.verdict) return route
+  const reasons = route.verdict_reasons ?? []
+  if (risk === 'red') {
+    return {
+      ...route,
+      verdict: 'no_go',
+      verdict_reasons: [`High-risk surface conditions on sol ${sol}`, ...reasons],
+    }
+  }
+  if (risk === 'yellow' || risk === 'unknown') {
+    const text =
+      risk === 'yellow' ? `Elevated-risk surface conditions on sol ${sol}` : `No weather data for sol ${sol}`
+    return {
+      ...route,
+      verdict: route.verdict === 'go' ? 'caution' : route.verdict,
+      verdict_reasons: [...reasons, text],
+    }
+  }
+  return route
 }
 
 export async function offlineConditions(sol?: number): Promise<Conditions> {
