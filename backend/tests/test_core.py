@@ -77,3 +77,35 @@ def test_hazards_group_consecutive_steep_cells():
     assert hazards[0]["type"] == "steep_slope"
     assert hazards[0]["value"] == 18.0
     assert hazards[0]["note"] == "Steep section, 20 m"
+
+
+def test_smoothing_makes_flat_route_one_straight_segment():
+    from app.core.pathfinding import smooth_path
+
+    cost = np.ones((20, 20))
+    path = find_path(cost, (0, 0), (19, 7))
+    assert len(path) > 2
+    assert smooth_path(path, cost, 10.0) == [(0.0, 0.0), (19.0, 7.0)]
+
+
+def test_smoothing_never_cuts_through_impassable_cells():
+    from app.core.pathfinding import densify, smooth_path
+
+    cost = np.ones((9, 9))
+    cost[4, :8] = np.inf  # wall with a gap at the east end
+    path = find_path(cost, (0, 0), (8, 0))
+    pts = densify(smooth_path(path, cost, 10.0))
+    cells = np.rint(pts).astype(int)
+    assert np.isfinite(cost[cells[:, 0], cells[:, 1]]).all()
+
+
+def test_downhill_is_faster_than_uphill():
+    from app.core.eva import polyline_metrics
+
+    elev = np.tile(np.arange(10, dtype=float) * 2.0, (3, 1))  # 2 m rise per 10 m cell eastwards
+    slope = np.zeros_like(elev)
+    east = np.array([[1.0, c] for c in range(10)])
+    up = polyline_metrics(east, elev, slope, 10.0, 1.0)
+    down = polyline_metrics(east[::-1], elev, slope, 10.0, 1.0)
+    assert down["duration_min"] < up["duration_min"]
+    assert up["distance_m"] == pytest.approx(down["distance_m"])

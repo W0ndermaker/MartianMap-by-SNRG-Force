@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.core.planner import plan_route
-from app.deps import get_terrain
+from app.deps import get_cost_factor, get_terrain
 from app.schemas import RouteRequest, RouteResponse
 
 router = APIRouter()
@@ -16,5 +16,6 @@ def post_route(request: RouteRequest) -> RouteResponse:
         request.goal,
         request.max_slope_deg,
         request.speed_flat_m_s,
+        cost_factor=get_cost_factor(),
     )
     return RouteResponse.model_validate(result)

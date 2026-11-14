@@ -1,0 +1,16 @@
+{
+ "west": 136.9,
+ "south": -5.25,
+ "east": 137.86,
+ "north": -4.16,
+ "width": 285,
+ "height": 323,
+ "offset_m": -4635,
+ "scale_m": 0.1,
+ "nodata": 65535,
+ "min_m": -4635.0,
+ "max_m": 489.0,
+ "valid_fraction": 1.0,
+ "source": "USGS HRSC-MOLA blended DEM v2, ~200 m",
+ "note": "row 0 = north edge; heights relative to the source DEM datum (Mars areoid/sphere)"
+}

@@ -13,7 +13,7 @@ class RouteRequest(BaseModel):
 
     start: LonLat
     goal: LonLat
-    max_slope_deg: float = Field(default=20, gt=0)
+    max_slope_deg: float = Field(default=20, gt=0, le=90)
     speed_flat_m_s: float = Field(default=1.0, gt=0)
 
 

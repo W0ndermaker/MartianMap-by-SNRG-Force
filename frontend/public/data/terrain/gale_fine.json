@@ -1,0 +1,16 @@
+{
+ "west": 137.28,
+ "south": -4.87,
+ "east": 137.48,
+ "north": -4.54,
+ "width": 1186,
+ "height": 1956,
+ "offset_m": -4543,
+ "scale_m": 0.1,
+ "nodata": 65535,
+ "min_m": -4542.0,
+ "max_m": -2505.5,
+ "valid_fraction": 1.0,
+ "source": "USGS MSL_Gale_DEM_Mosaic_1m_v3 (HiRISE), averaged to ~10.0 m",
+ "note": "row 0 = north edge; heights relative to the source DEM datum (Mars areoid/sphere)"
+}

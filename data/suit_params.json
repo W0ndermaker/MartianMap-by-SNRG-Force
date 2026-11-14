@@ -1,0 +1,23 @@
+{
+  "speed_flat_m_s": {
+    "value": 1.0,
+    "status": "ASSUMPTION",
+    "note": "Comfortable walking pace on flat ground; Apollo lunar EVA traverse speeds were of the same order. Matches the backend default."
+  },
+  "eva_max_duration_min": {
+    "value": 480,
+    "status": "sourced",
+    "note": "Oxygen supply expressed as EVA duration: the NASA EMU spacesuit supports about 8 hours of EVA (plus a reserve). o2_used_pct = duration / this value.",
+    "source": "https://www.nasa.gov/reference/extravehicular-mobility-unit/"
+  },
+  "max_slope_deg": {
+    "value": 20,
+    "status": "ASSUMPTION",
+    "note": "Default walkable slope for a suited astronaut on loose regolith. User can change it in the interface (10-30 deg)."
+  },
+  "max_slope_range_deg": {
+    "value": [10, 30],
+    "status": "ASSUMPTION",
+    "note": "Slider range in the interface."
+  }
+}

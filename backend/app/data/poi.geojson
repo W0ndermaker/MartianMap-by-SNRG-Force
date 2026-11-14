@@ -1,0 +1,149 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.441633,
+          -4.589467
+        ]
+      },
+      "properties": {
+        "id": "poi-01",
+        "name": "Bradbury Landing",
+        "kind": "base",
+        "description": "Curiosity's landing site (August 2012) on the floor of Gale crater. Flat, well-mapped ground makes it the natural base and start point for walking EVAs.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA17064/PIA17064~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA17064)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.44913,
+          -4.589485
+        ]
+      },
+      "properties": {
+        "id": "poi-02",
+        "name": "Yellowknife Bay (John Klein drill site)",
+        "kind": "science",
+        "description": "First rock drilled on Mars. The mudstone showed that an ancient lake here could have supported microbial life: water, key elements and an energy source.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA16763/PIA16763~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA16763)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.402201,
+          -4.63916
+        ]
+      },
+      "properties": {
+        "id": "poi-03",
+        "name": "The Kimberley (Windjana)",
+        "kind": "science",
+        "description": "Sandstone outcrops where Curiosity drilled Windjana and found unusual potassium-rich minerals. Good place to study how Gale's sediments were delivered.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA18390/PIA18390~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA18390)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.377464,
+          -4.662699
+        ]
+      },
+      "properties": {
+        "id": "poi-04",
+        "name": "Pahrump Hills",
+        "kind": "science",
+        "description": "Base of Mount Sharp. Layered lake mudstones of the Murray formation record how long liquid water persisted in Gale crater.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA19114/PIA19114~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA19114)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.356181,
+          -4.68472
+        ]
+      },
+      "properties": {
+        "id": "poi-05",
+        "name": "Murray Buttes",
+        "kind": "rover_stop",
+        "description": "Mesas capped by wind-deposited sandstone. A scenic stop that shows the dry, windy climate that followed the lake era.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA20844/PIA20844~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA20844)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.378061,
+          -4.725593
+        ]
+      },
+      "properties": {
+        "id": "poi-06",
+        "name": "Vera Rubin Ridge",
+        "kind": "science",
+        "description": "Erosion-resistant ridge rich in hematite. Studying it explains how groundwater altered the rocks after the lake dried out.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA21717/PIA21717~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA21717)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.383653,
+          -4.726079
+        ]
+      },
+      "properties": {
+        "id": "poi-07",
+        "name": "Glen Torridon (clay-bearing unit)",
+        "kind": "science",
+        "description": "Clay minerals detected from orbit, confirmed by Curiosity's drill. Clays preserve organic molecules well, a priority target for astronauts.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA23047/PIA23047~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA23047)"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          137.41253,
+          -4.73545
+        ]
+      },
+      "properties": {
+        "id": "poi-08",
+        "name": "Mont Mercou",
+        "kind": "science",
+        "description": "Cliff at the transition from clay-bearing to sulfate-bearing layers: a record of Mars changing from a wetter to a drier world.",
+        "photo_url": "https://images-assets.nasa.gov/image/PIA24543/PIA24543~small.jpg",
+        "photo_credit": "NASA/JPL-Caltech/MSSS (PIA24543)"
+      }
+    }
+  ]
+}
