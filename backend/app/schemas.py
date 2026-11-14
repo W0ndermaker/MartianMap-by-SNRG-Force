@@ -1,20 +1,32 @@
 """Pydantic models for every request and response in the API contract."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core import constants as c
 
 # [longitude, latitude], degrees, east longitude 0-360.
 LonLat = tuple[float, float]
 
+_Lon = Annotated[float, Field(ge=c.LON_RANGE_DEG[0], le=c.LON_RANGE_DEG[1])]
+_Lat = Annotated[float, Field(ge=c.LAT_RANGE_DEG[0], le=c.LAT_RANGE_DEG[1])]
+RequestLonLat = tuple[_Lon, _Lat]
+
 
 class RouteRequest(BaseModel):
-    """POST /api/route request body."""
+    """POST /api/route request body. NaN, infinity and out-of-range values give 422."""
 
-    start: LonLat
-    goal: LonLat
-    max_slope_deg: float = Field(default=20, gt=0)
-    speed_flat_m_s: float = Field(default=1.0, gt=0)
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    start: RequestLonLat
+    goal: RequestLonLat
+    max_slope_deg: float = Field(default=c.DEFAULT_MAX_SLOPE_DEG, gt=0, le=c.MAX_SLOPE_LIMIT_DEG)
+    speed_flat_m_s: float = Field(
+        default=c.DEFAULT_SPEED_FLAT_M_S,
+        ge=c.SPEED_FLAT_RANGE_M_S[0],
+        le=c.SPEED_FLAT_RANGE_M_S[1],
+    )
 
 
 class LineString(BaseModel):

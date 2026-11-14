@@ -46,6 +46,15 @@ SYNTHETIC_RIDGE_ROW_FRACTION = 0.5  # ridge position across the grid
 SYNTHETIC_RIDGE_GAP_COL_FRACTION = 0.35  # position of the gap in the ridge
 SYNTHETIC_RIDGE_GAP_HALF_WIDTH_M = 200.0  # ASSUMPTION
 
+# Request limits: values outside them are rejected with 422.
+# Coordinates: geometric limits (longitude may come as -180..180 or 0..360, normalized later).
+LON_RANGE_DEG = (-360.0, 360.0)
+LAT_RANGE_DEG = (-90.0, 90.0)
+# A slope limit cannot exceed a vertical wall.
+MAX_SLOPE_LIMIT_DEG = 90.0
+# ASSUMPTION: plausible flat-ground walking speeds of a suited astronaut (slow walk to run).
+SPEED_FLAT_RANGE_M_S = (0.1, 3.0)
+
 # Request defaults (API contract).
 DEFAULT_MAX_SLOPE_DEG = 20.0  # ASSUMPTION (same value in developer C suit_params.json)
 DEFAULT_SPEED_FLAT_M_S = 1.0  # ASSUMPTION (same value in developer C suit_params.json)
