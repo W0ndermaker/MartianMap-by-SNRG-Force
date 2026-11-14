@@ -25,8 +25,13 @@ def plan_route(
     goal: tuple[float, float],
     max_slope_deg: float,
     speed_flat_m_s: float,
+    cost_factor: np.ndarray | None = None,
 ) -> dict:
-    """Plan a route between two [lon, lat] points; return a RouteResponse-shaped dict."""
+    """Plan a route between two [lon, lat] points; return a RouteResponse-shaped dict.
+
+    ``cost_factor`` (same shape as the grid) multiplies the slope-based travel cost, e.g. a
+    roughness penalty and a discount along Curiosity's path (see app.core.costs).
+    """
     grid = terrain.grid
     start_cell = to_cell(grid, *start)
     goal_cell = to_cell(grid, *goal)
@@ -46,6 +51,8 @@ def plan_route(
             }
 
     cost = np.where(passable, 1.0 / speed_m_s(terrain.slope, speed_flat_m_s), np.inf)
+    if cost_factor is not None:
+        cost = cost * cost_factor
     path = find_path(cost, start_cell, goal_cell)
     if path is None:
         return {

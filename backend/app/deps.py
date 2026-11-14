@@ -4,7 +4,10 @@ import logging
 from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
+
 from app.config import get_dem_path
+from app.core.costs import cost_factor
 from app.core.terrain import Terrain, build_synthetic_terrain, load_terrain
 
 logger = logging.getLogger(__name__)
@@ -24,3 +27,13 @@ def get_terrain() -> Terrain:
     else:
         logger.warning("DEM_PATH is not set or the file is missing; using synthetic terrain")
     return build_synthetic_terrain()
+
+
+TRAVERSE_FILE = Path(__file__).parent / "data" / "curiosity_traverse.geojson"
+
+
+@lru_cache(maxsize=1)
+def get_cost_factor() -> np.ndarray:
+    """Per-cell cost multiplier for the current terrain: roughness and Curiosity's path."""
+    terrain = get_terrain()
+    return cost_factor(terrain.elev, terrain.grid, TRAVERSE_FILE)

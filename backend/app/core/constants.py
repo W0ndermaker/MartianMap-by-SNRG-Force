@@ -60,6 +60,17 @@ TOBLER_OFFSET = 0.05
 # (data/suit_params.json, developer C).
 EVA_MAX_DURATION_MIN = 480.0
 
+# Terrain roughness (local relief at the 10 m grid scale: ridges, scarps, knobs) adds travel cost:
+# multiplier = 1 + roughness_m / ROUGHNESS_REF_M, at most ROUGHNESS_MAX_FACTOR.
+# ASSUMPTION: 1 m of local relief makes walking twice as costly; no suited-EVA source yet.
+ROUGHNESS_REF_M = 1.0
+ROUGHNESS_MAX_FACTOR = 4.0
+
+# Cells near Curiosity's driven path are known to be trafficable, so they cost less.
+# ASSUMPTION: 30 % cheaper within 15 m of the path (rover track width plus localisation error).
+TRAVERSE_BUFFER_M = 15.0
+TRAVERSE_COST_FACTOR = 0.7
+
 # ASSUMPTION: a path cell is hazardous at this fraction of the allowed maximum slope.
 HAZARD_SLOPE_FRACTION = 0.8
 
