@@ -33,6 +33,16 @@ Copy `.env.example` to `.env` to configure:
 Terrain check: at 24 Curiosity end-of-drive positions the terrain height differs from the rover's localized
 elevation by at most ±1 m (median +0.09 m).
 
+## Backend on real terrain (until DEM loading lands in the backend)
+
+`backend/app/deps.py` still builds synthetic terrain, so routes ignore the real slopes. To run the unchanged
+backend on the real HiRISE terrain the map shows:
+
+```bash
+uv run --no-project --python 3.12 --with-requirements ../backend/requirements.txt \
+    python scripts/real_terrain_backend.py          # serves /api on http://127.0.0.1:8000
+```
+
 ## Offline / fallback
 
 If the backend is unreachable the map keeps working (required by the submission rules):

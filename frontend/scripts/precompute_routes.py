@@ -77,15 +77,10 @@ def sample(meta, h, lon, lat):
     return np.where(inside, v, np.nan)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--bounds", default=",".join(map(str, DEFAULT_BOUNDS)))
-    ap.add_argument("--cell", type=float, default=10.0)
-    args = ap.parse_args()
-    bounds = tuple(float(v) for v in args.bounds.split(","))
-
+def build_real_terrain(bounds, cell_m):
+    """Backend Terrain (kind='real') on the backend grid, sampled from the HiRISE height grid."""
     meta, h = load_heights()
-    grid = make_grid(bounds, args.cell)
+    grid = make_grid(bounds, cell_m)
     rows, cols = np.meshgrid(np.arange(grid.n_rows), np.arange(grid.n_cols), indexing="ij")
     # cell centres -> lon/lat (vectorised version of geo.to_lonlat)
     lon = grid.lon0 + np.degrees((cols + 0.5) * grid.cell_size_m / (3396190.0 * math.cos(math.radians(grid.lat_ts))))
@@ -94,6 +89,16 @@ def main():
     elev = sample(meta, h, lon, lat).astype(np.float32)
     terrain = Terrain(elev=elev, slope=compute_slope_deg(elev, grid.cell_size_m), grid=grid, kind="real")
     print(f"grid {grid.n_cols}x{grid.n_rows} @ {grid.cell_size_m} m, elev {np.nanmin(elev):.0f}..{np.nanmax(elev):.0f} m")
+    return meta, terrain
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bounds", default=",".join(map(str, DEFAULT_BOUNDS)))
+    ap.add_argument("--cell", type=float, default=10.0)
+    args = ap.parse_args()
+    bounds = tuple(float(v) for v in args.bounds.split(","))
+    meta, terrain = build_real_terrain(bounds, args.cell)
 
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
     routes = []

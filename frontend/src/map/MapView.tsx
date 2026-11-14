@@ -181,6 +181,41 @@ export default function MapView() {
     scene.fog.enabled = false;
     scene.screenSpaceCameraController.minimumZoomDistance = 30;
 
+    // Trackpad pinch: Safari sends WebKit gesture events, Chrome/Firefox send ctrl+wheel. Cesium ignores both
+    // (and Safari would zoom the whole page), so turn them into camera zoom here.
+    const zoomBy = (factor: number) => {
+      if (!Number.isFinite(factor) || factor <= 0 || viewer.isDestroyed()) return;
+      const cam = viewer.camera;
+      const carto = cam.positionCartographic;
+      const ground = scene.globe.getHeight(carto) ?? terrainRef.current?.heightAt(CMath.toDegrees(carto.longitude), CMath.toDegrees(carto.latitude)) ?? 0;
+      const agl = Math.max(60, carto.height - ground);
+      const amount = agl * (1 - 1 / factor);
+      if (amount > 0) cam.zoomIn(Math.min(amount, agl - 40));
+      else cam.zoomOut(Math.min(-amount, 5e6));
+    };
+    let lastScale = 1;
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+      lastScale = 1;
+    };
+    const onGestureChange = (e: Event) => {
+      e.preventDefault();
+      const s = (e as unknown as { scale: number }).scale;
+      if (s > 0) zoomBy(s / lastScale);
+      lastScale = s;
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return; // plain two-finger scroll is handled by Cesium itself
+      e.preventDefault();
+      e.stopPropagation();
+      zoomBy(Math.exp(-e.deltaY * 0.012));
+    };
+    const opts: AddEventListenerOptions = { passive: false, capture: true };
+    container.addEventListener('gesturestart', onGestureStart, opts);
+    container.addEventListener('gesturechange', onGestureChange, opts);
+    container.addEventListener('gestureend', onGestureStart, opts);
+    container.addEventListener('wheel', onWheel, opts);
+
     for (const name of ['bounds', 'tracks', 'route', 'hazards', 'poi', 'points', 'highlight']) {
       const ds = new CustomDataSource(name);
       sources.current[name] = ds;
@@ -231,6 +266,10 @@ export default function MapView() {
 
     return () => {
       destroyed = true;
+      container.removeEventListener('gesturestart', onGestureStart, opts);
+      container.removeEventListener('gesturechange', onGestureChange, opts);
+      container.removeEventListener('gestureend', onGestureStart, opts);
+      container.removeEventListener('wheel', onWheel, opts);
       stopFlyRef.current?.();
       stopFlyRef.current = null;
       overlayLayers.current = {};
@@ -562,7 +601,7 @@ export default function MapView() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black">
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="absolute inset-0 touch-none" />
       <MapHud
         mode={mode}
         ionAvailable={Boolean(ION_TOKEN)}
