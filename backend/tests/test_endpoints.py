@@ -273,3 +273,34 @@ def test_no_sol_without_weather_data_is_green_or_go():
         assert data["verdict"] != "go", sol
         if client.get("/api/conditions", params={"sol": sol}).json()["risk_level"] == "unknown":
             assert f"No weather data for sol {sol}" in data["verdict_reasons"]
+
+
+GOALS = [[137.402201, -4.63916], [137.377464, -4.662699], [137.44913, -4.589485]]
+
+
+@pytest.mark.parametrize("goal", GOALS)
+def test_carrying_load_never_takes_less_time_or_oxygen(goal):
+    body = {"start": VALID_ROUTE_BODY["start"], "goal": goal}
+    free = client.post("/api/route", json=body).json()
+    loaded = client.post("/api/route", json={**body, "carrying_load": True}).json()
+    if free["status"] != "ok":
+        pytest.skip("no route on the test terrain")
+    assert loaded["status"] == "ok"
+    for key in ("duration_min", "return_duration_min", "o2_used_pct", "round_trip_o2_used_pct"):
+        assert loaded[key] >= free[key], key
+    assert loaded["o2_reserve_pct"] <= free["o2_reserve_pct"]
+
+
+def test_eva_dose_is_rate_times_out_and_back():
+    data = _route(sol=4995)
+    rate = client.get("/api/conditions", params={"sol": 4995}).json()["radiation_usv_per_hour"]
+    hours = (data["duration_min"] + data["return_duration_min"]) / 60
+    assert data["eva_dose_usv"] == pytest.approx(rate * hours, abs=0.1)
+
+
+def test_eva_dose_is_null_without_data():
+    assert _route()["eva_dose_usv"] is None  # no sol: no dose rate
+    from app.api.route import eva_dose_usv
+
+    assert eva_dose_usv(None, 60, 60) is None
+    assert eva_dose_usv(20.0, 60, None) is None

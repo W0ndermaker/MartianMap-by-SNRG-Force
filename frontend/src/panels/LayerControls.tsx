@@ -15,6 +15,8 @@ export function LayerControls() {
   const toggleLayer = useAppStore((s) => s.toggleLayer)
   const maxSlope = useAppStore((s) => s.maxSlopeDeg)
   const setMaxSlope = useAppStore((s) => s.setMaxSlope)
+  const carryingLoad = useAppStore((s) => s.carryingLoad)
+  const setCarryingLoad = useAppStore((s) => s.setCarryingLoad)
   // Local value while dragging; the route is recalculated on release.
   const [draft, setDraft] = useState(maxSlope)
   useEffect(() => setDraft(maxSlope), [maxSlope])
@@ -42,6 +44,18 @@ export function LayerControls() {
           onBlur={commit}
           className="mt-1 w-full accent-orange-500"
         />
+      </label>
+      <label
+        className="mt-3 flex items-center gap-2 text-sm text-stone-300"
+        title="Tools and samples: walking 15 % slower, 25 % more oxygen per minute (model assumption)"
+      >
+        <input
+          type="checkbox"
+          checked={carryingLoad}
+          onChange={() => setCarryingLoad(!carryingLoad)}
+          className="accent-orange-500"
+        />
+        Carrying science gear
       </label>
       <fieldset className="mt-3 space-y-1">
         <legend className="mb-1 text-[11px] uppercase tracking-wide text-stone-400">Layers</legend>

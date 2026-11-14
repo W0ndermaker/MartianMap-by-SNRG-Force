@@ -30,6 +30,9 @@ const SAME_POINT_DEG = 1e-6
 const samePoint = (a: LonLat, b: LonLat) =>
   Math.abs(a[0] - b[0]) < SAME_POINT_DEG && Math.abs(a[1] - b[1]) < SAME_POINT_DEG
 
+export const OFFLINE_LOAD_REASON =
+  'Offline demo: the precomputed demo routes assume no science gear. Turn off "Carrying science gear" to see them.'
+
 export const OFFLINE_ROUTE_REASON =
   'Offline demo: the route server is unreachable, so only the precomputed demo routes below can be shown.'
 
@@ -39,6 +42,9 @@ export const OFFLINE_ROUTE_REASON =
  */
 export async function offlineRoute(request: RouteRequest): Promise<RouteResponse> {
   const { routes } = await loadDemoRoutes()
+  // Demo routes were computed without science gear: with the gear they would understate time
+  // and oxygen, so they are not offered.
+  if (request.carrying_load) return { status: 'no_route', reason: OFFLINE_LOAD_REASON }
   const match = routes.find(
     (r) =>
       samePoint(r.request.start, request.start) &&
@@ -50,7 +56,14 @@ export async function offlineRoute(request: RouteRequest): Promise<RouteResponse
   // with the same rule as the backend (red: NO-GO; yellow or unknown: at least CAUTION).
   if (request.sol === undefined) return match.response
   const conditions = await offlineConditions(request.sol)
-  return withWeather(match.response, conditions.risk_level, conditions.sol)
+  const route = withWeather(match.response, conditions.risk_level, conditions.sol)
+  // EVA dose for the selected sol, as the backend computes it.
+  const rate = conditions.radiation_usv_per_hour
+  const out = route.duration_min
+  const back = route.return_duration_min
+  const dose =
+    rate == null || out == null || back == null ? null : Math.round(rate * ((out + back) / 60) * 10) / 10
+  return { ...route, eva_dose_usv: dose }
 }
 
 /** The route verdict adjusted for the surface risk of a sol (mirrors backend core/verdict.py). */

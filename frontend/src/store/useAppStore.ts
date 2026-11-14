@@ -33,6 +33,8 @@ export interface AppState {
   start: LonLat | null
   goal: LonLat | null
   maxSlopeDeg: number
+  /** The astronaut carries science gear (request field carrying_load). */
+  carryingLoad: boolean
   route: RouteResponse | null
   routeState: LoadState
 
@@ -53,6 +55,7 @@ export interface AppState {
   setStart: (point: LonLat | null) => void
   setGoal: (point: LonLat | null) => void
   setMaxSlope: (deg: number) => void
+  setCarryingLoad: (v: boolean) => void
   planRoute: () => Promise<void>
   clearRoute: () => void
   loadConditions: (sol?: number) => Promise<void>
@@ -74,6 +77,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   start: null,
   goal: null,
   maxSlopeDeg: suit.max_slope_deg.value,
+  carryingLoad: false,
   route: null,
   routeState: 'idle',
   sol: null,
@@ -137,8 +141,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     void get().planRoute()
   },
 
+  setCarryingLoad: (carryingLoad) => {
+    set({ carryingLoad })
+    void get().planRoute()
+  },
+
   planRoute: async () => {
-    const { start, goal, maxSlopeDeg, sol, conditionsState } = get()
+    const { start, goal, maxSlopeDeg, sol, conditionsState, carryingLoad } = get()
     if (!start || !goal) return
     set({ routeState: 'loading' })
     // Never plan without the sol while conditions are still loading: the verdict would ignore the
@@ -151,9 +160,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         max_slope_deg: maxSlopeDeg,
         speed_flat_m_s: suit.speed_flat_m_s.value,
         ...(sol === null ? {} : { sol }),
+        ...(carryingLoad ? { carrying_load: true } : {}),
       })
       // Ignore a response for points the user has already moved.
-      if (get().start !== start || get().goal !== goal || get().maxSlopeDeg !== maxSlopeDeg) return
+      const now = get()
+      if (
+        now.start !== start ||
+        now.goal !== goal ||
+        now.maxSlopeDeg !== maxSlopeDeg ||
+        now.carryingLoad !== carryingLoad
+      )
+        return
       set({
         route: result.data,
         routeState: 'ready',

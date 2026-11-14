@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { OFFLINE_ROUTE_REASON, offlineDemoPairs } from '../api/offline'
+import { OFFLINE_LOAD_REASON, OFFLINE_ROUTE_REASON, offlineDemoPairs } from '../api/offline'
 import type { LonLat, Verdict } from '../api/types'
 import { useMapStore } from '../map/mapStore'
 import { useAppStore } from '../store/useAppStore'
@@ -115,7 +115,7 @@ export function EvaPanel() {
   else if (route && route.status !== 'ok')
     body = (
       <Hint
-        tone={route.reason === OFFLINE_ROUTE_REASON ? 'muted' : 'error'}
+        tone={route.reason === OFFLINE_ROUTE_REASON || route.reason === OFFLINE_LOAD_REASON ? 'muted' : 'error'}
         text={
           route.reason ??
           (route.status === 'out_of_bounds'
@@ -152,6 +152,10 @@ export function EvaPanel() {
           label="O₂ reserve"
           value={fmt(reserve, 0, '%')}
           warn={reserve !== null && reserve !== undefined && reserve < 0}
+        />
+        <Metric
+          label="EVA dose"
+          value={route.eva_dose_usv == null ? 'No data' : fmt(route.eva_dose_usv, 0, 'µSv')}
         />
         <Metric label="Ascent" value={fmt(route.ascent_m, 0, 'm')} />
         <Metric label="Descent" value={fmt(route.descent_m, 0, 'm')} />

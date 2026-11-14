@@ -27,6 +27,7 @@ Builds a route between two points.
 | `max_slope_deg` | number | no, default 20 | Maximum slope; anything steeper is impassable |
 | `speed_flat_m_s` | number | no, default 1.0 | Speed on flat ground |
 | `sol` | integer | no | Sol whose surface conditions feed the verdict (nearest sol with data); without it the weather is not part of the verdict |
+| `carrying_load` | boolean | no, default false | The astronaut carries science gear: walking speed × 0.85 and oxygen use per minute × 1.25 (ASSUMPTION, `constants.py`) |
 
 ```json
 {
@@ -58,6 +59,7 @@ Builds a route between two points.
 | `o2_reserve_pct` | number or null | 100 − round trip; negative means the supply is not enough |
 | `verdict` | string | `go`, `caution` or `no_go` |
 | `verdict_reasons` | array of strings | Short English reasons for the interface, most important first |
+| `eva_dose_usv` | number or null | Radiation dose for the whole EVA, out and back, µSv: dose rate of the sol × (duration + return duration); null without a sol or without dose-rate data |
 
 Verdict rule: `no_go` if there is no way back, less than the 30-minute emergency reserve of oxygen (at the planned rate of a 7-hour supply) is left after the way back, or the sol risk is `red`; `caution` if less than 1.5 × the reserve is left, the route out or back has hazards, or the sol risk is `yellow`; otherwise `go`. The new fields are present only when `status` is `ok`; older clients may ignore them.
 
@@ -219,3 +221,4 @@ Fields: `case`, `note`, `outbound_path` and `return_path` (GeoJSON LineString), 
 | 2026-11-15 | Suit supply 420 min (NASA OIG: EMU up to 7 hours); verdict NO-GO below the 30-min reserve left after the way back, CAUTION below 1.5 × reserve; walk-back ring at 195 min | B |
 | 2026-11-15 | `risk_level` value `unknown` for sols with missing REMS inputs (was `green`); route verdict CAUTION "No weather data for sol N" | B, C data |
 | 2026-11-15 | `GET /api/copilot/scenario?case=turnback\|leak` (default `turnback`); field `case`; `leak_at_min` may be null; two offline files instead of one | B |
+| 2026-11-15 | Route request `carrying_load`; response `eva_dose_usv` (additive) | B |

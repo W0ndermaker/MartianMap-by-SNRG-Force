@@ -10,6 +10,8 @@ export interface RouteRequest {
   speed_flat_m_s?: number
   /** Sol whose surface conditions feed the verdict (optional). */
   sol?: number
+  /** The astronaut carries science gear: slower walk, more oxygen. */
+  carrying_load?: boolean
 }
 
 export interface ProfilePoint {
@@ -46,6 +48,8 @@ export interface RouteResponse {
   o2_reserve_pct?: number | null
   verdict?: Verdict | null
   verdict_reasons?: string[] | null
+  /** Radiation dose for the whole EVA (out and back), µSv; null without data. */
+  eva_dose_usv?: number | null
 }
 
 export type UvIndex = 'low' | 'moderate' | 'high' | 'very_high'

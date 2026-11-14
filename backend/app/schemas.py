@@ -29,6 +29,8 @@ class RouteRequest(BaseModel):
     )
     # Optional: the sol whose surface conditions feed the verdict (not part of v1 contract).
     sol: int | None = Field(default=None, ge=0)
+    # Optional: the astronaut carries science gear (slower walk, more oxygen; constants.py).
+    carrying_load: bool = False
 
 
 class LineString(BaseModel):
@@ -72,6 +74,8 @@ class RouteResponse(BaseModel):
     o2_reserve_pct: float | None = None
     verdict: Literal["go", "caution", "no_go"] | None = None
     verdict_reasons: list[str] | None = None
+    # Radiation dose for the whole EVA (out and back), microsieverts; null without data.
+    eva_dose_usv: float | None = None
 
 
 class ConditionsResponse(BaseModel):

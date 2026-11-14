@@ -55,6 +55,12 @@ MAX_SLOPE_LIMIT_DEG = 90.0
 # ASSUMPTION: plausible flat-ground walking speeds of a suited astronaut (slow walk to run).
 SPEED_FLAT_RANGE_M_S = (0.1, 3.0)
 
+# Carrying science gear (tools and samples), request field carrying_load.
+# ASSUMPTION: walking is 15 % slower and oxygen use per minute 25 % higher with the gear; not
+# derived from a suited-EVA source yet.
+LOAD_SPEED_FACTOR = 0.85
+LOAD_O2_RATE_FACTOR = 1.25
+
 # Request defaults (API contract).
 DEFAULT_MAX_SLOPE_DEG = 20.0  # ASSUMPTION (same value in developer C suit_params.json)
 DEFAULT_SPEED_FLAT_M_S = 1.0  # ASSUMPTION (same value in developer C suit_params.json)
@@ -134,4 +140,5 @@ SIM_ROUTES = {"leak": ("poi-01", "poi-04"), "turnback": ("poi-01", "poi-08")}
 MAX_PROFILE_POINTS = 300
 
 SECONDS_PER_MINUTE = 60.0
+MINUTES_PER_HOUR = 60.0
 COORD_DECIMALS = 6

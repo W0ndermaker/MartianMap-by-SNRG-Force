@@ -26,6 +26,7 @@ def plan_route(
     max_slope_deg: float,
     speed_flat_m_s: float,
     cost_factor: np.ndarray | None = None,
+    o2_rate_factor: float = 1.0,
 ) -> dict:
     """Plan a route between two [lon, lat] points; return a RouteResponse-shaped dict.
 
@@ -98,7 +99,7 @@ def plan_route(
         "path": {"type": "LineString", "coordinates": coords},
         "distance_m": round(m["distance_m"], 1),
         "duration_min": round(m["duration_min"], 1),
-        "o2_used_pct": round(m["o2_used_pct"], 1),
+        "o2_used_pct": round(m["o2_used_pct"] * o2_rate_factor, 1),
         "max_slope_deg": round(m["max_slope_deg"], 1),
         "ascent_m": round(m["ascent_m"], 1),
         "descent_m": round(m["descent_m"], 1),
