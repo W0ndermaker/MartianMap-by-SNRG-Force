@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -72,38 +71,20 @@ def test_cors_allows_configured_origin():
     assert r.headers["access-control-allow-origin"] == "http://localhost:5173"
 
 
-def test_health_terrain_synthetic_without_dem(monkeypatch):
-    monkeypatch.delenv("DEM_PATH", raising=False)
-    monkeypatch.setattr("app.config.ENV_FILE", Path("/nonexistent/.env"))
+def test_health_reports_terrain_kind_and_grid():
+    from app.core.geo import bounds
+    from app.deps import get_terrain
+
+    terrain = get_terrain()
+    data = client.get("/api/health").json()
+    assert data["terrain"] == terrain.kind == "synthetic"
+    assert data["cell_size_m"] == terrain.grid.cell_size_m
+    assert data["bounds"] == [round(v, 4) for v in bounds(terrain.grid)]
+
+
+def test_health_terrain_ignores_dem_path_until_loader_exists(monkeypatch, tmp_path):
+    monkeypatch.setenv("DEM_PATH", str(tmp_path / "missing.tif"))
     assert client.get("/api/health").json()["terrain"] == "synthetic"
-
-
-def test_health_terrain_synthetic_when_dem_unreadable(monkeypatch, tmp_path):
-    bad = tmp_path / "missing.tif"
-    monkeypatch.setenv("DEM_PATH", str(bad))
-    assert client.get("/api/health").json()["terrain"] == "synthetic"
-
-
-def test_health_terrain_real_when_dem_readable(monkeypatch, tmp_path):
-    import numpy as np
-    import rasterio
-    from rasterio.transform import from_origin
-
-    dem = tmp_path / "dem.tif"
-    with rasterio.open(
-        dem,
-        "w",
-        driver="GTiff",
-        height=2,
-        width=2,
-        count=1,
-        dtype="float32",
-        transform=from_origin(137, -4, 0.01, 0.01),
-        crs="EPSG:4326",
-    ) as dst:
-        dst.write(np.zeros((1, 2, 2), dtype="float32"))
-    monkeypatch.setenv("DEM_PATH", str(dem))
-    assert client.get("/api/health").json()["terrain"] == "real"
 
 
 def _route(**overrides):

@@ -14,5 +14,7 @@ def get_terrain() -> Terrain:
 
     TODO: load the real elevation map from DEM_PATH once scripts/prepare_dem.py exists.
     """
-    logger.warning("Real elevation map loading is not implemented yet; using synthetic terrain")
+    logger.warning(
+        "Real elevation map loading is not implemented; using synthetic terrain (DEM_PATH ignored)"
+    )
     return build_synthetic_terrain()
