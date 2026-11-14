@@ -42,3 +42,9 @@ def test_red_sol_is_no_go_even_for_short_walk():
     r = assess_eva(_leg(5), _leg(5), "red", 42)
     assert r["verdict"] == "no_go"
     assert "sol 42" in r["verdict_reasons"][0]
+
+
+def test_reason_percentages_add_up_to_100_at_half_values():
+    r = assess_eva(_leg(15.9), _leg(15.6), None, None)  # round trip 31.5
+    assert "uses 32 %" in r["verdict_reasons"][0]
+    assert "68 % left" in r["verdict_reasons"][0]

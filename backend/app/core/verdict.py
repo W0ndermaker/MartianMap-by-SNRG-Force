@@ -6,6 +6,7 @@ No-Go: no way back, the round trip needs more than the whole supply, or a red-ri
 Caution: steep sections on the way out or back, or a yellow-risk sol. Otherwise Go.
 """
 
+import math
 from typing import Literal
 
 from app.core import constants as c
@@ -62,9 +63,10 @@ def assess_eva(outbound: dict, back: dict, risk_level: str | None, sol: int | No
         verdict = "go"
         reasons = []
     if fields["round_trip_o2_used_pct"] is not None and verdict != "no_go":
+        # Whole percents, rounded half up like the interface, so "used" + "left" = 100.
+        used = math.floor(fields["round_trip_o2_used_pct"] + 0.5)
         reasons.insert(
             0,
-            f"Round trip uses {fields['round_trip_o2_used_pct']:.0f} % of the oxygen supply, "
-            f"{fields['o2_reserve_pct']:.0f} % left",
+            f"Round trip uses {used} % of the oxygen supply, {c.O2_SUPPLY_PCT - used:.0f} % left",
         )
     return {**fields, "verdict": verdict, "verdict_reasons": reasons}

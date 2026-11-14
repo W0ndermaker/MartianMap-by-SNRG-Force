@@ -11,6 +11,9 @@ const VERDICT_STYLE: Record<Verdict, string> = {
   no_go: 'bg-fuchsia-500/20 text-fuchsia-200 ring-fuchsia-400/60',
 }
 
+/** The whole oxygen supply in percent (definition of the API's oxygen fields). */
+const O2_SUPPLY_PCT = 100
+
 const VERDICT_LABEL: Record<Verdict, string> = {
   go: 'GO',
   caution: 'CAUTION',
@@ -106,7 +109,12 @@ export function EvaPanel() {
       />
     )
   else if (route) {
-    const reserve = route.o2_reserve_pct
+    // Show the reserve as "100 − rounded round trip" so the two tiles always add up to 100 %.
+    const roundTrip = route.round_trip_o2_used_pct
+    const reserve =
+      roundTrip === null || roundTrip === undefined || route.o2_reserve_pct == null
+        ? route.o2_reserve_pct
+        : O2_SUPPLY_PCT - Math.round(roundTrip)
     body = (
       <div className={`grid grid-cols-2 gap-2 ${state === 'loading' ? 'opacity-60' : ''}`}>
         {route.verdict && (
