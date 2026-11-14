@@ -52,6 +52,11 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ## Methods and formulas
 
+- NASA Office of Inspector General, "NASA's Management and Development of Spacesuits", IG-17-018 (2017) — EMU oxygen for up to 7 hours, 30-minute secondary oxygen pack, 8 hours per EVA for the xEMU — https://oig.nasa.gov/docs/IG-17-018.pdf — U.S. Government work
+- Scoville, Z., "Human Spaceflight Operations: Extra-Vehicular Activity", NASA (NTRS 20150006014) — EMU primary life support "~7 to 8 hours", secondary oxygen package "minimum of 30 minutes" — https://ntrs.nasa.gov/citations/20150006014 — U.S. Government work
+- Least-cost travel time from the base to every cell (scikit-image MCP_Geometric) and contour rings (skimage.measure.find_contours) — walk-back rings — https://scikit-image.org — BSD-3-Clause
+- EVA Copilot oxygen rate: least-squares slope of tank readings over the last 10 minutes; tank pressure proportional to the amount of gas (ideal gas at constant temperature) — n/a
+
 - Tobler's hiking function — walking speed vs slope (ASSUMPTION: Earth-based, used as an approximation for Mars EVA) — Tobler, W. (1993), Three presentations on geographical analysis and modeling — n/a
 - Any-angle path smoothing ("string pulling") — straightens the 8-connected grid path only where every crossed cell is passable and the straight segment is not slower — standard post-processing for grid path planning — n/a
 - Terrain roughness = RMS of elevation minus its 3x3 mean (10 m grid) — extra route cost; weight 1 m of relief = 2x cost (ASSUMPTION, no suited-EVA source) — n/a

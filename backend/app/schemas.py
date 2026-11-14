@@ -123,3 +123,62 @@ class HealthResponse(BaseModel):
     # [min_lon, min_lat, max_lon, max_lat]
     bounds: tuple[float, float, float, float]
     cell_size_m: float
+
+
+# ---- EVA Copilot (added 2026-11-14) ----
+
+CopilotLevel = Literal["go", "caution", "turn_back", "emergency"]
+_Minutes = Annotated[float, Field(ge=0, le=c.EVA_MAX_DURATION_MIN * 2)]
+_Pct = Annotated[float, Field(ge=0, le=c.O2_SUPPLY_PCT)]
+
+
+class CopilotAssessRequest(BaseModel):
+    """POST /api/copilot/assess: suit tank readings so far and the current position."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    position: RequestLonLat
+    times_min: list[_Minutes] = Field(min_length=1, max_length=c.COPILOT_MAX_READINGS)
+    o2_pct: list[_Pct] = Field(min_length=1, max_length=c.COPILOT_MAX_READINGS)
+
+
+class CopilotAir(BaseModel):
+    """Air module decision."""
+
+    level: CopilotLevel
+    reasons: list[str]
+    o2_remaining_pct: float
+    rate_pct_per_min: float
+    planned_rate_pct_per_min: float
+    minutes_of_o2_left: float
+    minutes_to_base: float | None
+    turn_back_in_min: float | None
+
+
+class CopilotStep(BaseModel):
+    t_min: float
+    position: LonLat
+    phase: Literal["out", "back"]
+    o2_pct: float
+    slope_deg: float
+    copilot: CopilotAir
+
+
+class CopilotEvent(BaseModel):
+    t_min: float
+    level: CopilotLevel
+    message: str
+
+
+class CopilotScenario(BaseModel):
+    """GET /api/copilot/scenario: simulated telemetry on a real route, with the decisions."""
+
+    note: str
+    outbound_path: LineString
+    return_path: LineString | None
+    leak_at_min: float
+    turned_back_at_min: float | None
+    arrived_back: bool
+    final_o2_pct: float
+    events: list[CopilotEvent]
+    steps: list[CopilotStep]

@@ -103,3 +103,13 @@ def polyline_to_cells(
         for k in range(1, steps + 1):
             cells.append((r0 + round((r1 - r0) * k / steps), c0 + round((c1 - c0) * k / steps)))
     return cells
+
+
+def surface_distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+    """Great-circle distance in meters between two [lon, lat] points on the Mars sphere."""
+    lon1, lat1, lon2, lat2 = map(math.radians, (a[0], a[1], b[0], b[1]))
+    h = (
+        math.sin((lat2 - lat1) / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
+    )
+    return 2 * MARS_RADIUS_M * math.asin(math.sqrt(h))

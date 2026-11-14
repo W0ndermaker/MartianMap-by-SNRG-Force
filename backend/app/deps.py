@@ -37,3 +37,26 @@ def get_cost_factor() -> np.ndarray:
     """Per-cell cost multiplier for the current terrain: roughness and Curiosity's path."""
     terrain = get_terrain()
     return cost_factor(terrain.elev, terrain.grid, TRAVERSE_FILE)
+
+
+@lru_cache(maxsize=1)
+def get_base() -> tuple[float, float]:
+    """[lon, lat] of the crew base (the point of interest of kind "base")."""
+    from app import datasets
+
+    base = next(f for f in datasets.get_poi().features if f.properties.kind == "base")
+    return base.geometry.coordinates
+
+
+@lru_cache(maxsize=1)
+def get_base_minutes() -> np.ndarray:
+    """Walk-back grid: walking minutes between the base and every cell (default slope limit)."""
+    from app.core import constants as c
+    from app.core.geo import to_cell
+    from app.core.reach import travel_minutes
+
+    terrain = get_terrain()
+    origin = to_cell(terrain.grid, *get_base())
+    if origin is None:
+        return np.full(terrain.grid.shape, np.inf)
+    return travel_minutes(terrain, origin, c.DEFAULT_MAX_SLOPE_DEG, c.DEFAULT_SPEED_FLAT_M_S)

@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from app.api import conditions, health, poi, route
+from app.api import conditions, copilot, health, poi, route
 from app.config import get_allowed_origins
 
 app = FastAPI(title="Martian Map API")
@@ -25,7 +25,7 @@ async def validation_error(request: Request, exc: RequestValidationError) -> JSO
     return JSONResponse(status_code=422, content={"detail": detail})
 
 
-for module in (route, conditions, poi, health):
+for module in (route, conditions, poi, health, copilot):
     app.include_router(module.router, prefix="/api")
 
 

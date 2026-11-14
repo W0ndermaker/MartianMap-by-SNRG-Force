@@ -171,6 +171,38 @@ Service request for checking a deployment.
 
 `terrain`: `real` or `synthetic`. `bounds`: `[min longitude, min latitude, max longitude, max latitude]` of the working area; the frontend takes the bounds from here.
 
+## 5. POST /api/copilot/assess
+
+EVA Copilot, Air module: a decision from the suit tank readings so far and the current position.
+
+Request: `{"position": [lon, lat], "times_min": [number], "o2_pct": [number]}` — reading times since the EVA start (minutes, increasing) and tank pressure as % of full (0–100), same length, at least one reading.
+
+Response:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `level` | string | `go`, `caution`, `turn_back` or `emergency` (the strictest signal wins) |
+| `reasons` | array of strings | English messages for the panel and the voice, most important first |
+| `o2_remaining_pct` | number | Last reading |
+| `rate_pct_per_min` | number | Measured use: least-squares slope over the last 10 minutes |
+| `planned_rate_pct_per_min` | number | Whole supply over the rated EVA duration |
+| `minutes_of_o2_left` | number | At the measured rate |
+| `minutes_to_base` | number or null | Walking time back to the base from the position (null: no way back) |
+| `turn_back_in_min` | number or null | Minutes until the latest turn-back moment (null: already past) |
+
+```json
+{"level": "caution", "reasons": ["You're breathing 25 % faster than planned on this climb. Slow down"], "o2_remaining_pct": 61.0, "rate_pct_per_min": 0.26, "planned_rate_pct_per_min": 0.208, "minutes_of_o2_left": 234.6, "minutes_to_base": 38.0, "turn_back_in_min": 158.4}
+```
+
+## 6. GET /api/copilot/scenario
+
+Demo EVA for the video and the offline mode: simulated suit telemetry on a real route (base → Pahrump Hills), with the Copilot decision at every minute. Fields: `note`, `outbound_path` and `return_path` (GeoJSON LineString), `leak_at_min`, `turned_back_at_min`, `arrived_back`, `final_o2_pct`, `events` (`{t_min, level, message}` — what the voice says), `steps` (`{t_min, position, phase: "out" | "back", o2_pct, slope_deg, copilot}` with `copilot` as in section 5). The same content is saved as `data/copilot_scenario.json`.
+
+## Static files for the map
+
+- `data/reach_from_base.geojson` — walk-back rings from the base: one MultiLineString per ring with `properties: {kind: "ring" | "walkback", minutes, label, area_km2}`; the `walkback` ring is the farthest point from which the astronaut can still walk back within the oxygen supply. Built by `backend/scripts/build_reach.py`.
+- `data/copilot_scenario.json` — see section 6. Built by `backend/scripts/build_copilot_scenario.py`.
+
 ## Change history
 
 | Date | Change | Who |
@@ -178,3 +210,4 @@ Service request for checking a deployment.
 | 2026-11-14 | First version; added `GET /api/health` | B |
 | 2026-11-14 | `reason`, `note`, `name`, `description` texts switched to English per the submission rules | B |
 | 2026-11-14 | Optional `sol` in the route request; round trip, oxygen reserve and `verdict` / `verdict_reasons` in the route response (backward compatible). Needs A and C sign-off | B |
+| 2026-11-14 | New `POST /api/copilot/assess`, `GET /api/copilot/scenario`; static files `reach_from_base.geojson`, `copilot_scenario.json` (additive). Needs A and C sign-off | B |

@@ -64,9 +64,12 @@ DEFAULT_SPEED_FLAT_M_S = 1.0  # ASSUMPTION (same value in developer C suit_param
 TOBLER_K = 3.5
 TOBLER_OFFSET = 0.05
 
-# Oxygen supply expressed as maximum EVA duration: the NASA EMU spacesuit supports about 8 hours
-# of EVA (plus a reserve). Source: https://www.nasa.gov/reference/extravehicular-mobility-unit/
-# (data/suit_params.json, developer C).
+# Oxygen supply expressed as maximum EVA duration (upper end of the documented range).
+# The EMU primary life support provides "~7 to 8 hours" of breathing oxygen (NASA, Human
+# Spaceflight Operations: EVA, NTRS 20150006014, slide 18); NASA OIG IG-17-018 gives "up to
+# 7 hours" for the current EMU and 8 hours per EVA for the next-generation xEMU.
+# https://ntrs.nasa.gov/citations/20150006014  https://oig.nasa.gov/docs/IG-17-018.pdf
+# (same value as data/suit_params.json, developer C; the URL cited there no longer resolves).
 EVA_MAX_DURATION_MIN = 480.0
 
 # Terrain roughness (local relief at the 10 m grid scale: ridges, scarps, knobs) adds travel cost:
@@ -87,6 +90,39 @@ O2_SUPPLY_PCT = 100.0
 
 # ASSUMPTION: a path cell is hazardous at this fraction of the allowed maximum slope.
 HAZARD_SLOPE_FRACTION = 0.8
+
+# Reachability rings from the base (presentation steps, not physical limits). The outer ring is
+# always the walk-back limit: half of EVA_MAX_DURATION_MIN, so out and back fit in the supply.
+REACH_RING_MINUTES = (30.0, 60.0, 120.0, 180.0)
+# Contour simplification tolerance, in grid cells (keeps the GeoJSON small for the browser).
+REACH_SIMPLIFY_CELLS = 1.0
+# Contour loops shorter than this many cells (about 300 m) are dropped as map-scale noise.
+REACH_MIN_RING_CELLS = 30
+
+# EVA Copilot (Air module).
+# Emergency oxygen kept back: the EMU secondary oxygen pack holds 30 minutes of oxygen
+# (NASA OIG IG-17-018, p. 9; NTRS 20150006014, slide 18: "minimum of 30 minutes").
+COPILOT_RESERVE_MIN = 30.0
+# Consumption rate is fitted over the readings of the last N minutes (algorithm setting).
+COPILOT_RATE_WINDOW_MIN = 10.0
+# ASSUMPTION: breathing 20 % faster than planned is worth a "slow down" message.
+COPILOT_CAUTION_RATE_FACTOR = 1.2
+# ASSUMPTION: oxygen falling 3x faster than planned on level ground is treated as a possible leak.
+COPILOT_LEAK_RATE_FACTOR = 3.0
+# ASSUMPTION: slopes from this value count as a climb (a faster breathing rate is expected).
+COPILOT_CLIMB_SLOPE_DEG = 8.0
+# Floor for the fitted rate so a flat or noisy reading never divides by zero (numerical guard).
+COPILOT_MIN_RATE_PCT_PER_MIN = 1e-6
+
+# Request size limit for /api/copilot/assess (one reading per second over a long EVA is far less).
+COPILOT_MAX_READINGS = 5000
+
+# Copilot demo scenario (simulated telemetry, presentation settings, not physical data).
+SIM_STEP_MIN = 1.0
+SIM_CLIMB_RATE_FACTOR = 1.4  # breathing harder on climbs, to show the "slow down" advice
+SIM_LEAK_AT_FRACTION = 0.6  # the leak starts after 60 % of the planned walk out
+SIM_LEAK_RATE_FACTOR = 4.0  # leak: oxygen falls 4x faster than planned
+SIM_ROUTE = ("poi-01", "poi-04")  # Bradbury Landing (base) -> Pahrump Hills
 
 # API contract: profile has at most this many points.
 MAX_PROFILE_POINTS = 300
