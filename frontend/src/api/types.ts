@@ -136,11 +136,14 @@ export interface CopilotStep {
   copilot: CopilotAir
 }
 
+export type CopilotCase = 'turnback' | 'leak'
+
 export interface CopilotScenario {
+  case: CopilotCase
   note: string
   outbound_path: { type: 'LineString'; coordinates: [number, number, number][] }
   return_path: { type: 'LineString'; coordinates: [number, number, number][] } | null
-  leak_at_min: number
+  leak_at_min: number | null
   turned_back_at_min: number | null
   arrived_back: boolean
   final_o2_pct: number

@@ -122,10 +122,13 @@ COPILOT_MAX_READINGS = 5000
 
 # Copilot demo scenario (simulated telemetry, presentation settings, not physical data).
 SIM_STEP_MIN = 1.0
+SIM_RETURN_SAMPLE_MIN = 10.0  # return routes are planned every N minutes of the walk out
 SIM_CLIMB_RATE_FACTOR = 1.4  # breathing harder on climbs, to show the "slow down" advice
-SIM_LEAK_AT_FRACTION = 0.6  # the leak starts after 60 % of the planned walk out
+SIM_LEAK_AT_FRACTION = 0.45  # the leak starts after 45 % of the planned walk out
 SIM_LEAK_RATE_FACTOR = 4.0  # leak: oxygen falls 4x faster than planned
-SIM_ROUTE = ("poi-01", "poi-04")  # Bradbury Landing (base) -> Pahrump Hills
+# Demo routes: the leak happens on the way to Pahrump Hills; the turn-back demo heads for
+# Mont Mercou, beyond the walk-back limit, so the Copilot must call the turn.
+SIM_ROUTES = {"leak": ("poi-01", "poi-04"), "turnback": ("poi-01", "poi-08")}
 
 # API contract: profile has at most this many points.
 MAX_PROFILE_POINTS = 300

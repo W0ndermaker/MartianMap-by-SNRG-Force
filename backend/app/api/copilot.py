@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from fastapi import APIRouter
 
@@ -29,25 +30,31 @@ def post_assess(request: CopilotAssessRequest) -> CopilotAir:
 
 
 @router.get("/copilot/scenario", response_model=CopilotScenario)
-def get_scenario() -> CopilotScenario:
-    """Demo EVA with simulated suit telemetry: a climb, then a leak, then the walk back."""
-    return _scenario()
+def get_scenario(case: Literal["turnback", "leak"] = "turnback") -> CopilotScenario:
+    """Demo EVA with simulated suit telemetry.
+
+    turnback: a walk to Mont Mercou, beyond the walk-back limit; the Copilot calls "Turn back
+    now" at the point of no return (with the 30-minute reserve) and the astronaut walks back.
+    leak: a suit leak on the way to Pahrump Hills; emergency return to the base.
+    """
+    return _scenario(case)
 
 
-@lru_cache(maxsize=1)
-def _scenario() -> CopilotScenario:
+@lru_cache(maxsize=2)
+def _scenario(case: str) -> CopilotScenario:
     terrain, factor = get_terrain(), get_cost_factor()
     pois = {f.properties.id: f.geometry.coordinates for f in datasets.get_poi().features}
-    start_id, goal_id = c.SIM_ROUTE
+    start_id, goal_id = c.SIM_ROUTES[case]
     args = (c.DEFAULT_MAX_SLOPE_DEG, c.DEFAULT_SPEED_FLAT_M_S)
     outbound = plan_route(terrain, pois[start_id], pois[goal_id], *args, cost_factor=factor)
     base = get_base()
 
     def plan_back(point: list[float]) -> dict:
-        return plan_route(terrain, tuple(point), base, *args, cost_factor=factor)
+        # The way back is the fastest walkable route (no preference for the rover track).
+        return plan_route(terrain, tuple(point), base, *args)
 
     return CopilotScenario.model_validate(
-        build_scenario(terrain, outbound, plan_back, get_base_minutes())
+        build_scenario(terrain, outbound, plan_back, get_base_minutes(), case)
     )
 
 

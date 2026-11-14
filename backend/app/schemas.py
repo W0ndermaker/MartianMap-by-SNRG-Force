@@ -173,10 +173,11 @@ class CopilotEvent(BaseModel):
 class CopilotScenario(BaseModel):
     """GET /api/copilot/scenario: simulated telemetry on a real route, with the decisions."""
 
+    case: Literal["turnback", "leak"]
     note: str
     outbound_path: LineString
     return_path: LineString | None
-    leak_at_min: float
+    leak_at_min: float | None
     turned_back_at_min: float | None
     arrived_back: bool
     final_o2_pct: float

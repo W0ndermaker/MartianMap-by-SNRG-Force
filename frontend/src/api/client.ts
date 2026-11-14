@@ -4,6 +4,7 @@
 import * as offline from './offline'
 import type {
   Conditions,
+  CopilotCase,
   CopilotScenario,
   Health,
   PoiCollection,
@@ -80,6 +81,9 @@ export const api = {
   poi: () => withFallback(() => request<PoiCollection>('/poi'), offline.offlinePoi),
 
   /** Demo EVA for the Copilot: simulated suit telemetry on a real route. */
-  copilotScenario: () =>
-    withFallback(() => request<CopilotScenario>('/copilot/scenario'), offline.offlineCopilotScenario),
+  copilotScenario: (scenarioCase: CopilotCase) =>
+    withFallback(
+      () => request<CopilotScenario>(`/copilot/scenario?case=${scenarioCase}`),
+      () => offline.offlineCopilotScenario(scenarioCase),
+    ),
 }

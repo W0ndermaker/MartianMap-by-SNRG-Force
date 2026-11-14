@@ -3,7 +3,7 @@
 
 import { create } from 'zustand'
 import { api } from '../api/client'
-import type { CopilotScenario } from '../api/types'
+import type { CopilotCase, CopilotScenario } from '../api/types'
 
 export type PlayerState = 'idle' | 'loading' | 'playing' | 'done' | 'error'
 
@@ -16,14 +16,16 @@ const EVENT_HOLD_MAX_MS = 3500
 const EVENT_HOLD_SILENT_MS = 1800
 
 interface CopilotState {
+  /** Scenario being shown, and the ones already loaded (by case). */
   scenario: CopilotScenario | null
+  loaded: Partial<Record<CopilotCase, CopilotScenario>>
   state: PlayerState
   /** Index of the current step in scenario.steps. */
   index: number
   /** Last spoken message and its level, for the panel. */
   message: { text: string; level: CopilotScenario['events'][number]['level'] } | null
   voice: boolean
-  play: () => Promise<void>
+  play: (scenarioCase: CopilotCase) => Promise<void>
   stop: () => void
   toggleVoice: () => void
 }
@@ -49,18 +51,20 @@ function speak(text: string, enabled: boolean): Promise<void> {
 
 export const useCopilotStore = create<CopilotState>((set, get) => ({
   scenario: null,
+  loaded: {},
   state: 'idle',
   index: 0,
   message: null,
   voice: true,
 
-  play: async () => {
+  play: async (scenarioCase) => {
     get().stop()
     const id = ++runId
     set({ state: 'loading', index: 0, message: null })
-    let scenario = get().scenario
+    let scenario = get().loaded[scenarioCase]
     try {
-      scenario ??= (await api.copilotScenario()).data
+      scenario ??= (await api.copilotScenario(scenarioCase)).data
+      set({ loaded: { ...get().loaded, [scenarioCase]: scenario } })
     } catch (error) {
       console.error(error)
       set({ state: 'error' })

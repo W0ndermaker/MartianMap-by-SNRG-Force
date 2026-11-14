@@ -96,15 +96,37 @@ export function CopilotPanel() {
 
       {state === 'error' && <p className="mb-3 text-sm text-red-300">The demo could not be loaded.</p>}
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => (state === 'playing' ? stop() : void play())}
-          className="rounded-md bg-orange-600 px-3 py-1.5 text-xs font-semibold hover:bg-orange-500 disabled:opacity-50"
-          disabled={state === 'loading'}
-        >
-          {state === 'playing' ? 'Stop' : state === 'loading' ? 'Loading…' : 'Play EVA demo'}
-        </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {state === 'playing' ? (
+          <button
+            type="button"
+            onClick={stop}
+            className="rounded-md bg-orange-600 px-3 py-1.5 text-xs font-semibold hover:bg-orange-500"
+          >
+            Stop
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void play('turnback')}
+              className="rounded-md bg-orange-600 px-3 py-1.5 text-xs font-semibold hover:bg-orange-500 disabled:opacity-50"
+              disabled={state === 'loading'}
+              title="A walk to Mont Mercou, beyond the walk-back limit: the Copilot calls the turn"
+            >
+              {state === 'loading' ? 'Loading…' : 'Play EVA demo'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void play('leak')}
+              className="rounded-md px-3 py-1.5 text-xs font-semibold text-fuchsia-200 ring-1 ring-fuchsia-400/60 hover:bg-fuchsia-500/15 disabled:opacity-50"
+              disabled={state === 'loading'}
+              title="A suit leak on the way to Pahrump Hills: emergency return"
+            >
+              Suit leak demo
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={toggleVoice}
@@ -116,7 +138,9 @@ export function CopilotPanel() {
         </button>
       </div>
       <p className="mt-2 text-[11px] leading-snug text-stone-500">
-        Simulated suit telemetry on real Gale terrain: a normal walk out, a suspected leak, the walk back.
+        {scenario?.case === 'leak'
+          ? 'Simulated suit telemetry on real Gale terrain: a suspected leak on the way out, then the emergency walk back.'
+          : 'Simulated suit telemetry on real Gale terrain: a walk toward Mont Mercou; the Copilot calls the turn at the point of no return, keeping the 30-min reserve.'}{' '}
         Rule-based on-board logic, no cloud AI.
       </p>
     </section>

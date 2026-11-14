@@ -3,6 +3,7 @@
 
 import type {
   Conditions,
+  CopilotCase,
   CopilotScenario,
   Health,
   LonLat,
@@ -100,8 +101,11 @@ export async function offlineDemoPairs(): Promise<
   }))
 }
 
-/** Copilot demo scenario precomputed by the backend (data/copilot_scenario.json). */
-export async function offlineCopilotScenario(): Promise<CopilotScenario> {
-  const m = await import('@data/copilot_scenario.json')
+/** Copilot demo scenarios precomputed by the backend (data/copilot_scenario_<case>.json). */
+export async function offlineCopilotScenario(scenarioCase: CopilotCase): Promise<CopilotScenario> {
+  const m =
+    scenarioCase === 'leak'
+      ? await import('@data/copilot_scenario_leak.json')
+      : await import('@data/copilot_scenario_turnback.json')
   return m.default as unknown as CopilotScenario
 }

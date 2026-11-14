@@ -194,14 +194,19 @@ Response:
 {"level": "caution", "reasons": ["You're breathing 25 % faster than planned on this climb. Slow down"], "o2_remaining_pct": 61.0, "rate_pct_per_min": 0.26, "planned_rate_pct_per_min": 0.208, "minutes_of_o2_left": 234.6, "minutes_to_base": 38.0, "turn_back_in_min": 158.4}
 ```
 
-## 6. GET /api/copilot/scenario
+## 6. GET /api/copilot/scenario?case=turnback|leak
 
-Demo EVA for the video and the offline mode: simulated suit telemetry on a real route (base → Pahrump Hills), with the Copilot decision at every minute. Fields: `note`, `outbound_path` and `return_path` (GeoJSON LineString), `leak_at_min`, `turned_back_at_min`, `arrived_back`, `final_o2_pct`, `events` (`{t_min, level, message}` — what the voice says), `steps` (`{t_min, position, phase: "out" | "back", o2_pct, slope_deg, copilot}` with `copilot` as in section 5). The same content is saved as `data/copilot_scenario.json`.
+Demo EVA for the video and the offline mode: simulated suit telemetry on a real route, with the Copilot decision at every minute. `case` (default `turnback`, anything else gives 422):
+
+- `turnback` — a walk from the base toward Mont Mercou, beyond the walk-back limit. The Copilot calls "Turn back now" at the point of no return, counting the 30-minute reserve and the real route back; the astronaut walks back on the fastest walkable route.
+- `leak` — a suspected suit leak on the way to Pahrump Hills; emergency return.
+
+Fields: `case`, `note`, `outbound_path` and `return_path` (GeoJSON LineString), `leak_at_min` (null for `turnback`), `turned_back_at_min`, `arrived_back`, `final_o2_pct`, `events` (`{t_min, level, message}` — what the voice says), `steps` (`{t_min, position, phase: "out" | "back", o2_pct, slope_deg, copilot}` with `copilot` as in section 5). The same content is saved as `data/copilot_scenario_turnback.json` and `data/copilot_scenario_leak.json`.
 
 ## Static files for the map
 
 - `data/reach_from_base.geojson` — walk-back rings from the base: one MultiLineString per ring with `properties: {kind: "ring" | "walkback", minutes, label, area_km2}`; the `walkback` ring is the farthest point from which the astronaut can still walk back with the 30-minute reserve left: (420 − 30) / 2 = 195 minutes of walking from the base. Built by `backend/scripts/build_reach.py`.
-- `data/copilot_scenario.json` — see section 6. Built by `backend/scripts/build_copilot_scenario.py`.
+- `data/copilot_scenario_turnback.json`, `data/copilot_scenario_leak.json` — see section 6. Built by `backend/scripts/build_copilot_scenario.py`.
 
 ## Change history
 
@@ -213,3 +218,4 @@ Demo EVA for the video and the offline mode: simulated suit telemetry on a real 
 | 2026-11-14 | New `POST /api/copilot/assess`, `GET /api/copilot/scenario`; static files `reach_from_base.geojson`, `copilot_scenario.json` (additive). Needs A and C sign-off | B |
 | 2026-11-15 | Suit supply 420 min (NASA OIG: EMU up to 7 hours); verdict NO-GO below the 30-min reserve left after the way back, CAUTION below 1.5 × reserve; walk-back ring at 195 min | B |
 | 2026-11-15 | `risk_level` value `unknown` for sols with missing REMS inputs (was `green`); route verdict CAUTION "No weather data for sol N" | B, C data |
+| 2026-11-15 | `GET /api/copilot/scenario?case=turnback\|leak` (default `turnback`); field `case`; `leak_at_min` may be null; two offline files instead of one | B |

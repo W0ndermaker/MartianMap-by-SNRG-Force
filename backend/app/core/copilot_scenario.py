@@ -14,8 +14,9 @@ from collections.abc import Callable
 import numpy as np
 
 from app.core import constants as c
-from app.core.copilot import assess_air, planned_rate_pct_per_min
+from app.core.copilot import assess_air
 from app.core.geo import surface_distance_m, to_cell
+from app.core.oxygen import pct_to_minutes, planned_rate_pct_per_min
 from app.core.terrain import Terrain
 
 
@@ -46,6 +47,7 @@ def build_scenario(
     outbound: dict,
     plan_back: Callable[[list[float]], dict],
     base_minutes: np.ndarray,
+    case: str = "turnback",
 ) -> dict:
     """Simulate the EVA minute by minute and record the Copilot's assessment at every step.
 
@@ -53,12 +55,32 @@ def build_scenario(
         terrain: the elevation map (slope under the astronaut).
         outbound: a plan_route result from the base to the target (status ok).
         plan_back: plans a route from a [lon, lat] point back to the base (plan_route dict).
-        base_minutes: walk-back grid from the base (app.core.reach.travel_minutes).
+        base_minutes: walk-back grid from the base (kept for the signature; the scenario uses
+            real return routes so that the turn-back call matches the actual walk back).
+        case: "turnback" - a walk to a target beyond the walk-back limit; the Copilot calls
+            "Turn back now" at the point of no return (with the reserve) and the astronaut
+            walks back. "leak" - a suit leak on the way out; emergency return.
     """
     planned = planned_rate_pct_per_min()
     out_speed = outbound["distance_m"] / outbound["duration_min"]  # m per minute
     walk_out = _walker(outbound["path"]["coordinates"], out_speed)
-    leak_at = outbound["duration_min"] * c.SIM_LEAK_AT_FRACTION
+    # Time back to the base from points of the way out, from real return routes (sampled every
+    # SIM_RETURN_SAMPLE_MIN and interpolated): the turn-back call matches the actual walk back.
+    sample_t = np.arange(
+        0.0, outbound["duration_min"] + c.SIM_RETURN_SAMPLE_MIN, c.SIM_RETURN_SAMPLE_MIN
+    )
+    sample_back = []
+    for ts in sample_t:
+        r = plan_back(walk_out(ts))
+        sample_back.append(r["duration_min"] if r.get("status") == "ok" else math.inf)
+    sample_back_arr = np.asarray(sample_back)
+
+    def minutes_back_from_route(t_out: float) -> float:
+        if not np.all(np.isfinite(sample_back_arr)):
+            return math.inf
+        return float(np.interp(t_out, sample_t, sample_back_arr))
+
+    leak_at = outbound["duration_min"] * c.SIM_LEAK_AT_FRACTION if case == "leak" else math.inf
 
     times: list[float] = []
     o2: list[float] = []
@@ -70,6 +92,7 @@ def build_scenario(
     t_phase0 = 0.0
     turned_at = None
     back_route = None
+    back_speed = out_speed
     tank = c.O2_SUPPLY_PCT
     t = 0.0
 
@@ -77,7 +100,12 @@ def build_scenario(
         pos = walk(t - t_phase0)
         cell = to_cell(terrain.grid, *pos)
         slope = float(terrain.slope[cell]) if cell else 0.0
-        to_base = float(base_minutes[cell]) if cell else math.inf
+        if phase == "out":
+            to_base = minutes_back_from_route(t)
+        else:
+            to_base = max(back_route["duration_min"] - (t - t_phase0), 0.0)
+        if not cell:
+            to_base = math.inf
 
         times.append(t)
         o2.append(tank)
@@ -92,17 +120,22 @@ def build_scenario(
                 "copilot": air,
             }
         )
-        # Speak only when the level changes, so the voice does not repeat itself.
-        if air["level"] != level_before:
+        # Speak only when the level changes, so the voice does not repeat itself. On the way back
+        # the decision is already taken: only a new emergency is spoken, not short climbs.
+        speak = air["level"] != level_before and (
+            phase == "out" or (air["level"] == "emergency" and level_before != "emergency")
+        )
+        if speak:
             events.append({"t_min": t, "level": air["level"], "message": air["reasons"][0]})
-            level_before = air["level"]
+        level_before = air["level"]
 
         if phase == "out" and air["level"] in ("turn_back", "emergency"):
             back_route = plan_back(pos)
             if back_route.get("status") != "ok":
                 break
             phase, turned_at, t_phase0 = "back", t, t
-            walk = _walker(back_route["path"]["coordinates"], out_speed)
+            back_speed = back_route["distance_m"] / back_route["duration_min"]
+            walk = _walker(back_route["path"]["coordinates"], back_speed)
             events.append(
                 {
                     "t_min": t,
@@ -112,7 +145,7 @@ def build_scenario(
                 }
             )
         done_out = phase == "out" and (t - t_phase0) * out_speed >= walk.total_m  # type: ignore[attr-defined]
-        done_back = phase == "back" and (t - t_phase0) * out_speed >= walk.total_m  # type: ignore[attr-defined]
+        done_back = phase == "back" and (t - t_phase0) * back_speed >= walk.total_m  # type: ignore[attr-defined]
         if done_out or done_back or tank <= 0 or t > c.EVA_MAX_DURATION_MIN:
             break
 
@@ -126,20 +159,22 @@ def build_scenario(
         t += c.SIM_STEP_MIN
 
     if phase == "back" and tank > 0:
+        left_min = pct_to_minutes(tank)
         events.append(
             {
                 "t_min": t,
                 "level": steps[-1]["copilot"]["level"],
-                "message": f"Back at base with {tank:.0f} % oxygen",
+                "message": f"Back at base with {tank:.0f} % oxygen ({left_min:.0f} min)",
             }
         )
     return {
+        "case": case,
         "note": "Simulated suit telemetry on real Gale terrain; the tank readings are not real data.",
         "outbound_path": outbound["path"],
         "return_path": back_route["path"]
         if back_route and back_route.get("status") == "ok"
         else None,
-        "leak_at_min": round(leak_at, 1),
+        "leak_at_min": round(leak_at, 1) if math.isfinite(leak_at) else None,
         "turned_back_at_min": turned_at,
         "arrived_back": phase == "back" and tank > 0,
         "final_o2_pct": round(tank, 1),
