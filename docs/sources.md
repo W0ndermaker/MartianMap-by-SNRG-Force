@@ -68,6 +68,10 @@ Format: `- Name — what we used it for — link — license (if known)`
 
 ## Images, icons, fonts
 
+- Inter (Rasmus Andersson) — interface text — https://fonts.google.com/specimen/Inter — SIL Open Font License 1.1 (OFL)
+- JetBrains Mono (JetBrains) — numbers and labels — https://fonts.google.com/specimen/JetBrains+Mono — SIL Open Font License 1.1 (OFL)
+- Both fonts are loaded from Google Fonts — https://fonts.google.com
+
 All POI photos: NASA/JPL-Caltech/MSSS, via https://images.nasa.gov (NASA Images and Media Usage Guidelines, https://www.nasa.gov/nasa-brand-center/images-and-media/):
 
 - PIA17064 "From Glenelg to Mount Sharp" — Bradbury Landing card — https://images.nasa.gov/details/PIA17064

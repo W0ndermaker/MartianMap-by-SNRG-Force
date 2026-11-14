@@ -113,7 +113,7 @@ function endpointIcon(label: 'A' | 'B'): string {
 function labelGraphics(text: string, offsetY = -34) {
   return {
     text,
-    font: '600 13px system-ui, -apple-system, Segoe UI, sans-serif',
+    font: '600 13px "JetBrains Mono", ui-monospace, monospace',
     fillColor: Color.WHITE,
     outlineColor: Color.BLACK,
     outlineWidth: 3,
@@ -485,7 +485,7 @@ export default function MapView() {
         // text only when zoomed in, so it does not cover Start/Goal in overview
         label: {
           ...labelGraphics(`${h.note} (${h.value.toFixed(1)}°)`, -30),
-          font: '600 12px system-ui, sans-serif',
+          font: '600 12px "JetBrains Mono", ui-monospace, monospace',
           distanceDisplayCondition: new DistanceDisplayCondition(0, 2500),
         },
       });

@@ -85,6 +85,7 @@ export function ProfileChart() {
                 tickFormatter={(v: number) => `${(v / 1000).toFixed(1)} km`}
                 stroke="#a8a29e"
                 fontSize={11}
+                fontFamily="var(--font-mono)"
               />
               <YAxis
                 yAxisId="elev"
@@ -92,6 +93,7 @@ export function ProfileChart() {
                 tickFormatter={(v: number) => `${v.toFixed(0)} m`}
                 stroke="#a8a29e"
                 fontSize={11}
+                fontFamily="var(--font-mono)"
                 width={64}
               />
               <YAxis
@@ -100,6 +102,7 @@ export function ProfileChart() {
                 domain={[0, 'auto']}
                 stroke="#7dd3fc"
                 fontSize={11}
+                fontFamily="var(--font-mono)"
                 width={32}
                 tickFormatter={(v: number) => `${v}°`}
               />
