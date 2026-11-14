@@ -40,10 +40,31 @@ def test_route_defaults_accepted():
         {**VALID_ROUTE_BODY, "max_slope_deg": "steep"},
         {**VALID_ROUTE_BODY, "max_slope_deg": 0},
         {**VALID_ROUTE_BODY, "speed_flat_m_s": -1},
+        {**VALID_ROUTE_BODY, "speed_flat_m_s": 1e-300},
+        {**VALID_ROUTE_BODY, "max_slope_deg": 1e9},
+        {**VALID_ROUTE_BODY, "start": [1e308, 1e308]},
+        {**VALID_ROUTE_BODY, "goal": [137.38, -91]},
     ],
 )
 def test_route_invalid_request_is_422(body):
     assert client.post("/api/route", json=body).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '{"start": [NaN, -4.59], "goal": [137.38, -4.72]}',
+        '{"start": [137.44, -4.59], "goal": [137.38, -4.72], "max_slope_deg": Infinity}',
+    ],
+)
+def test_route_nan_and_infinity_are_422_not_500(raw):
+    r = client.post("/api/route", content=raw, headers={"content-type": "application/json"})
+    assert r.status_code == 422
+
+
+def test_route_accepts_negative_east_longitude():
+    body = {**VALID_ROUTE_BODY, "start": [137.4417 - 360.0, -4.5895]}
+    assert client.post("/api/route", json=body).json()["status"] == "ok"
 
 
 def test_conditions():

@@ -1,0 +1,21 @@
+# Render Blueprint for the Martian Map backend (free plan).
+# The elevation map is not stored in git: the build step crops it from the USGS source
+# (scripts/prepare_dem.py, about a minute, reads only the 8 m overview of the file).
+services:
+  - type: web
+    name: martian-map-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python scripts/prepare_dem.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DEM_PATH
+        value: data_raw/gale_dem.tif
+      # Comma-separated frontend origins, e.g. https://<project>.vercel.app,http://localhost:5173
+      - key: ALLOWED_ORIGINS
+        sync: false
