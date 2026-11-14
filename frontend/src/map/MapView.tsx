@@ -896,7 +896,7 @@ export default function MapView() {
   useEffect(() => () => viewerRef.current?.camera.lookAtTransform(Matrix4.IDENTITY), []);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
+    <div className="relative h-full w-full overflow-hidden bg-bg">
       <div ref={containerRef} className="absolute inset-0 touch-none" />
       <MapHud
         mode={mode}

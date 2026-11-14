@@ -11,6 +11,9 @@
  * white on alert would be 3.6:1.
  */
 @theme static {
+  /* Only these tokens exist as colors: Tailwind's default palette is switched off. */
+  --color-*: initial;
+
   --color-bg: #0b0f14; /* page, panels, dark halo around marks on the terrain */
   --color-card: #121820; /* cards */
   --color-glass: rgb(11 15 20 / 0.72); /* panels over the map, with backdrop blur */

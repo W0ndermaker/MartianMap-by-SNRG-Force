@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { CopilotPanel } from './panels/CopilotPanel'
 import { EvaPanel } from './panels/EvaPanel'
-import { LayerControls } from './panels/LayerControls'
 import { ProfileChart } from './panels/ProfileChart'
 import { Header } from './layout/Header'
 import { CopilotBanner } from './map/CopilotBanner'
@@ -57,7 +56,6 @@ export default function App() {
               <ProfileChart />
             </div>
           )}
-          <LayerControls />
           <section aria-label="Mission goal" className="text-xs leading-snug text-muted">
             <span className="font-mono text-label uppercase text-muted">Mission goal · </span>
             {MISSION_GOAL}
