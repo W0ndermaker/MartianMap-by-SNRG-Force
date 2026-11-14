@@ -1,12 +1,11 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { ConditionsPanel } from './panels/ConditionsPanel'
 import { CopilotPanel } from './panels/CopilotPanel'
 import { EvaPanel } from './panels/EvaPanel'
 import { LayerControls } from './panels/LayerControls'
-import { PoiCard } from './panels/PoiCard'
 import { ProfileChart } from './panels/ProfileChart'
 import { Header } from './layout/Header'
 import { useAppStore } from './store/useAppStore'
+import { useCopilotStore } from './store/useCopilotStore'
 
 // The science goal of the EVA, shown in the side panel (also in README.md).
 const MISSION_GOAL =
@@ -21,6 +20,8 @@ const MapView = lazy(() => import('./map/MapView'))
 export default function App() {
   const init = useAppStore((s) => s.init)
   const startHeartbeat = useAppStore((s) => s.startHeartbeat)
+  const copilotState = useCopilotStore((s) => s.state)
+  const copilotActive = copilotState === 'playing' || copilotState === 'done'
 
   useEffect(() => {
     void init()
@@ -48,14 +49,13 @@ export default function App() {
           aria-label="EVA plan"
           className="flex min-w-0 flex-[1_1_var(--size-panel)] flex-col gap-4 border-l border-line p-6 lg:h-full lg:max-w-[440px] lg:overflow-y-auto"
         >
-          <EvaPanel />
-          <CopilotPanel />
-          <PoiCard />
-          <ConditionsPanel />
+          {copilotActive ? <CopilotPanel /> : <EvaPanel />}
+          {!copilotActive && (
+            <div className="h-56 shrink-0">
+              <ProfileChart />
+            </div>
+          )}
           <LayerControls />
-          <div className="h-56 shrink-0">
-            <ProfileChart />
-          </div>
           <section aria-label="Mission goal" className="text-xs leading-snug text-muted">
             <span className="font-mono text-label uppercase text-muted">Mission goal · </span>
             {MISSION_GOAL}

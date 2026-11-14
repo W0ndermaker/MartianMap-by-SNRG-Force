@@ -29,3 +29,10 @@ export function titleCase(value: string | null | undefined): string {
   if (!value) return NO_DATA
   return value.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 }
+
+/** h:mm for a number of minutes. */
+export function hhmm(min: number | null | undefined): string | null {
+  if (min === null || min === undefined || !Number.isFinite(min)) return null
+  const total = Math.round(min)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}

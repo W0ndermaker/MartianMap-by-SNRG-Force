@@ -1,12 +1,17 @@
+// "Outside" block (design/reference/Main.dc.html): surface conditions of the sol from Curiosity.
+
 import type { RiskLevel } from '../api/types'
 import { useAppStore } from '../store/useAppStore'
-import { fmt, titleCase } from './format'
+import type { Status } from '../theme'
+import { StatusChip } from '../ui/Status'
+import { fmt, NO_DATA, titleCase } from './format'
+import { Label } from './ui'
 
-const RISK_STYLE: Record<RiskLevel, string> = {
-  green: 'bg-emerald-500/20 text-emerald-300 ring-emerald-400/50',
-  yellow: 'bg-amber-500/20 text-amber-300 ring-amber-400/50',
-  red: 'bg-red-500/20 text-red-300 ring-red-400/50',
-  unknown: 'bg-stone-600/30 text-stone-300 ring-stone-400/50',
+const RISK_STATUS: Record<RiskLevel, Status> = {
+  green: 'go',
+  yellow: 'caution',
+  red: 'alert',
+  unknown: 'unknown',
 }
 
 const RISK_LABEL: Record<RiskLevel, string> = {
@@ -22,12 +27,16 @@ const RISK_LABEL: Record<RiskLevel, string> = {
  */
 const REMS_SENSOR_FLOOR_C = -100
 
-function Stat({ label, value, title }: { label: string; value: string; title?: string }) {
+function Row({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="min-w-0" title={title}>
-      <div className="text-[11px] uppercase tracking-wide text-stone-400">{label}</div>
-      <div className="truncate text-sm font-medium text-stone-100">{value}</div>
-    </div>
+    <>
+      <span className="text-muted" title={title}>
+        {label}
+      </span>
+      <span className={`text-right font-mono ${value === NO_DATA ? 'text-unknown' : ''}`} title={title}>
+        {value}
+      </span>
+    </>
   )
 }
 
@@ -38,50 +47,51 @@ export function ConditionsPanel() {
   return (
     <section
       aria-label="Surface conditions"
-      className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl bg-stone-900/80 px-4 py-3 ring-1 ring-white/10"
+      className="grid grid-cols-2 gap-x-4 gap-y-2.5 rounded-card border border-line px-4 py-3.5 text-[13px]"
     >
+      <span className="col-span-2 flex items-center justify-between gap-2">
+        <Label>Outside · Curiosity REMS / RAD</Label>
+        {conditions && (
+          <StatusChip
+            status={RISK_STATUS[conditions.risk_level]}
+            label={RISK_LABEL[conditions.risk_level]}
+          />
+        )}
+      </span>
+
       {state === 'error' && !conditions && (
-        <p className="text-sm text-red-300">Conditions are unavailable right now.</p>
+        <p className="col-span-2 text-unknown">Conditions are unavailable right now.</p>
       )}
-      {state === 'loading' && !conditions && <p className="text-sm text-stone-400">Loading…</p>}
+      {state === 'loading' && !conditions && <p className="col-span-2 text-muted">Loading…</p>}
 
       {conditions && (
         <>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${RISK_STYLE[conditions.risk_level]}`}
-          >
-            {RISK_LABEL[conditions.risk_level]}
-          </span>
-          <div
-            className={`grid flex-1 grid-cols-3 gap-x-5 gap-y-2 sm:grid-cols-6 ${state === 'loading' ? 'opacity-60' : ''}`}
-          >
-            <Stat
-              label="Air temp"
-              value={
-                conditions.temp_min_c === null && conditions.temp_max_c === null
-                  ? 'No data'
-                  : `${fmt(conditions.temp_min_c)} … ${fmt(conditions.temp_max_c, 0, '°C')}`
-              }
-            />
-            <Stat label="Pressure" value={fmt(conditions.pressure_pa, 0, 'Pa')} />
-            <Stat label="UV" value={titleCase(conditions.uv_index)} />
-            <Stat
-              label="Radiation · mission avg"
-              value={fmt(conditions.radiation_usv_per_hour, 1, 'µSv/h')}
-              title="RAD mission-average surface dose rate (Hassler et al., 2014); there are no daily values in this data, so it is the same on every sol."
-            />
-            <Stat
-              label="Dust opacity"
-              value={conditions.dust_opacity === null ? 'No data' : fmt(conditions.dust_opacity, 2)}
-            />
-            <Stat label="Source" value={conditions.source} title={conditions.source} />
-          </div>
-          <p className="basis-full text-[11px] leading-snug text-stone-500">
-            Historical conditions on sol {conditions.sol}, not a live feed. Weather from the REMS
-            daily summary published for outreach (calibrated data is in the NASA PDS); radiation
-            is the RAD mission average.
+          <Row
+            label="Temperature"
+            value={
+              conditions.temp_min_c === null && conditions.temp_max_c === null
+                ? NO_DATA
+                : `${fmt(conditions.temp_min_c)} … ${fmt(conditions.temp_max_c, 0, '°C')}`
+            }
+          />
+          <Row label="Pressure" value={fmt(conditions.pressure_pa, 0, 'Pa')} />
+          <Row
+            label="Radiation · mission avg"
+            value={fmt(conditions.radiation_usv_per_hour, 1, 'µSv/h')}
+            title="RAD mission-average surface dose rate (Hassler et al., 2014); there are no daily values in this data, so it is the same on every sol."
+          />
+          <Row label="UV" value={conditions.uv_index ? titleCase(conditions.uv_index) : NO_DATA} />
+          <Row
+            label="Dust opacity"
+            value={conditions.dust_opacity === null ? NO_DATA : fmt(conditions.dust_opacity, 2)}
+          />
+          <p className="col-span-2 text-[11px] leading-snug text-muted">
+            Historical conditions on sol <span className="font-mono">{conditions.sol}</span>, not a
+            live feed. Weather from the REMS daily summary published for outreach (calibrated data
+            is in the NASA PDS); radiation is the RAD mission average.
             {conditions.temp_min_c === REMS_SENSOR_FLOOR_C &&
               ` The ${REMS_SENSOR_FLOOR_C} °C minimum may be the sensor limit, not the real low.`}
+            {` Source: ${conditions.source}.`}
           </p>
         </>
       )}

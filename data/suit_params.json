@@ -10,6 +10,12 @@
     "note": "Oxygen supply expressed as EVA duration: the current NASA EMU provides oxygen for up to 7 hours (NASA OIG IG-17-018, p. 8). A 30-minute secondary oxygen pack is kept as the emergency reserve. o2_used_pct = duration / this value.",
     "source": "https://oig.nasa.gov/docs/IG-17-018.pdf"
   },
+  "emergency_reserve_min": {
+    "value": 30,
+    "status": "sourced",
+    "note": "Oxygen that must be left after the way back: the EMU secondary oxygen pack holds 30 minutes (NASA OIG IG-17-018, p. 9). Same value as COPILOT_RESERVE_MIN in the backend.",
+    "source": "https://oig.nasa.gov/docs/IG-17-018.pdf"
+  },
   "max_slope_deg": {
     "value": 20,
     "status": "ASSUMPTION",

@@ -13,7 +13,9 @@ import {
 import type { RouteResponse } from '../api/types'
 import { useMapStore } from '../map/mapStore'
 import { useAppStore } from '../store/useAppStore'
+import { token } from '../theme'
 import { fmt } from './format'
+import { Label } from './ui'
 
 /** Distance along the path (m) for each hazard, from the nearest path vertex. */
 function hazardDistances(route: RouteResponse): number[] {
@@ -51,20 +53,20 @@ export function ProfileChart() {
   return (
     <section
       aria-label="Elevation profile"
-      className="flex h-full min-h-40 flex-col rounded-xl bg-stone-900/80 px-4 py-3 ring-1 ring-white/10"
+      className="flex h-full min-h-40 flex-col rounded-card bg-card px-4 py-3"
     >
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-orange-300">
-          Elevation profile
+        <h2>
+          <Label>Elevation profile</Label>
         </h2>
-        <div className="flex gap-4 text-[11px] text-stone-400">
-          <span><i className="mr-1 inline-block h-2 w-3 bg-orange-400/70" />Elevation</span>
-          <span><i className="mr-1 inline-block h-0.5 w-3 bg-sky-300 align-middle" />Slope</span>
-          <span><i className="mr-1 inline-block h-2 w-0.5 bg-red-400 align-middle" />Hazard</span>
+        <div className="flex gap-4 text-[11px] text-muted">
+          <span><i className="mr-1 inline-block h-2 w-3 bg-muted" />Elevation</span>
+          <span><i className="mr-1 inline-block h-0.5 w-3 bg-route align-middle" />Slope</span>
+          <span><i className="mr-1 inline-block h-2 w-0.5 bg-caution align-middle" />Steep section</span>
         </div>
       </div>
       {!profile || profile.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-stone-500">
+        <div className="flex flex-1 items-center justify-center text-sm text-muted">
           {state === 'loading' ? 'Planning route…' : 'No route yet: the profile appears here.'}
         </div>
       ) : (
@@ -77,13 +79,13 @@ export function ProfileChart() {
               onMouseMove={(e) => setHoverDistM(typeof e?.activeLabel === 'number' ? e.activeLabel : null)}
               onMouseLeave={() => setHoverDistM(null)}
             >
-              <CartesianGrid stroke="#ffffff14" vertical={false} />
+              <CartesianGrid stroke={token('card')} vertical={false} />
               <XAxis
                 dataKey="dist_m"
                 type="number"
                 domain={['dataMin', 'dataMax']}
                 tickFormatter={(v: number) => `${(v / 1000).toFixed(1)} km`}
-                stroke="#a8a29e"
+                stroke={token('muted')}
                 fontSize={11}
                 fontFamily="var(--font-mono)"
               />
@@ -91,7 +93,7 @@ export function ProfileChart() {
                 yAxisId="elev"
                 domain={['auto', 'auto']}
                 tickFormatter={(v: number) => `${v.toFixed(0)} m`}
-                stroke="#a8a29e"
+                stroke={token('muted')}
                 fontSize={11}
                 fontFamily="var(--font-mono)"
                 width={64}
@@ -100,14 +102,14 @@ export function ProfileChart() {
                 yAxisId="slope"
                 orientation="right"
                 domain={[0, 'auto']}
-                stroke="#7dd3fc"
+                stroke={token('route')}
                 fontSize={11}
                 fontFamily="var(--font-mono)"
                 width={32}
                 tickFormatter={(v: number) => `${v}°`}
               />
               <Tooltip
-                contentStyle={{ background: '#1c1917', border: '1px solid #44403c', fontSize: 12 }}
+                contentStyle={{ background: token('bg'), border: `1px solid ${token('muted')}`, fontSize: 12 }}
                 labelFormatter={(v: number) => `${fmt(v, 0, 'm')} along the route`}
                 formatter={(value: number, name: string) =>
                   name === 'slope_deg' ? [fmt(value, 1, '°'), 'Slope'] : [fmt(value, 1, 'm'), 'Elevation']
@@ -116,21 +118,21 @@ export function ProfileChart() {
               <Area
                 yAxisId="elev"
                 dataKey="elev_m"
-                stroke="#fb923c"
-                fill="#fb923c"
+                stroke={token('text-2')}
+                fill={token('muted')}
                 fillOpacity={0.25}
                 isAnimationActive={false}
               />
               <Line
                 yAxisId="slope"
                 dataKey="slope_deg"
-                stroke="#7dd3fc"
+                stroke={token('route')}
                 dot={false}
                 strokeWidth={1}
                 isAnimationActive={false}
               />
               {hazards.map((x, i) => (
-                <ReferenceLine key={i} yAxisId="elev" x={x} stroke="#f87171" strokeDasharray="3 3" />
+                <ReferenceLine key={i} yAxisId="elev" x={x} stroke={token('caution')} strokeDasharray="3 3" />
               ))}
             </ComposedChart>
           </ResponsiveContainer>
