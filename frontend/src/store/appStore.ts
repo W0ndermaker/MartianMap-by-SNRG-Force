@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import type { Health, LonLat, PoiCollection, RouteResponse } from '../api/types';
 
-export type LayerId = 'elevation' | 'slope' | 'thermal' | 'geology' | 'curiosity';
+export type LayerId = 'elevation' | 'slope' | 'thermal' | 'geology' | 'mola' | 'curiosity';
 
 export type RoutePhase = 'idle' | 'loading' | 'ok' | 'no_route' | 'out_of_bounds' | 'error';
 
@@ -27,6 +27,8 @@ export interface AppState {
   routeLabel: string | null;
 
   layers: Record<LayerId, boolean>;
+  /** Tint the grayscale HiRISE/CTX imagery with a Mars palette (visualisation, not true colour). */
+  tint: boolean;
   selectedPoiId: string | null;
   /** Index into route.profile hovered on the profile chart; the map highlights that spot. */
   profileHoverIndex: number | null;
@@ -39,6 +41,7 @@ export interface AppState {
   setRoute: (phase: RoutePhase, route: RouteResponse | null, message?: string | null,
              source?: 'backend' | 'fallback' | null, label?: string | null) => void;
   toggleLayer: (id: LayerId) => void;
+  setTint: (v: boolean) => void;
   selectPoi: (id: string | null) => void;
   setProfileHoverIndex: (i: number | null) => void;
   setMaxSlopeDeg: (v: number) => void;
@@ -57,7 +60,8 @@ export const useAppStore = create<AppState>((set) => ({
   routeMessage: null,
   routeSource: null,
   routeLabel: null,
-  layers: { elevation: false, slope: false, thermal: false, geology: false, curiosity: true },
+  layers: { elevation: false, slope: false, thermal: false, geology: false, mola: false, curiosity: true },
+  tint: true,
   selectedPoiId: null,
   profileHoverIndex: null,
 
@@ -71,6 +75,7 @@ export const useAppStore = create<AppState>((set) => ({
   setRoute: (routePhase, route, routeMessage = null, routeSource = null, routeLabel = null) =>
     set({ routePhase, route, routeMessage, routeSource, routeLabel, profileHoverIndex: null }),
   toggleLayer: (id) => set((s) => ({ layers: { ...s.layers, [id]: !s.layers[id] } })),
+  setTint: (tint) => set({ tint }),
   selectPoi: (selectedPoiId) => set({ selectedPoiId }),
   setProfileHoverIndex: (profileHoverIndex) => set({ profileHoverIndex }),
   setMaxSlopeDeg: (maxSlopeDeg) => set({ maxSlopeDeg }),

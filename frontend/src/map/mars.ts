@@ -60,6 +60,13 @@ const tpl = (layer: string, ext = 'png') =>
   `${TREK}/${layer}/1.0.0/default/default028mm/{TileMatrix}/{TileRow}/{TileCol}.${ext}`;
 
 export const TREK_LAYERS = {
+  vikingColor: {
+    id: 'Mars_Viking_MDIM21_ClrMosaic_global_232m',
+    title: 'Viking MDIM 2.1 global colour mosaic (232 m)',
+    url: tpl('Mars_Viking_MDIM21_ClrMosaic_global_232m', 'jpg'),
+    maxLevel: 7,
+    credit: 'NASA/JPL/USGS (Viking MDIM 2.1) via Mars Trek',
+  },
   molaShade: {
     id: 'Mars_MGS_MOLA_ClrShade_merge_global_463m',
     title: 'MOLA color hillshade (global, 463 m)',
@@ -100,8 +107,59 @@ export const TREK_LAYERS = {
   },
 } satisfies Record<string, TrekLayer>;
 
-export function trekProvider(layer: TrekLayer): WebMapTileServiceImageryProvider {
-  return new WebMapTileServiceImageryProvider({
+// ---------- Mars colour tint for the grayscale HiRISE / CTX mosaics ----------
+// HiRISE RED and CTX are single-band (grayscale) products. For readability the map can map gray levels to a
+// Mars-like palette. This is a VISUALISATION, not true colour (labelled in the UI).
+const TINT_STOPS: [number, [number, number, number]][] = [
+  [0, [28, 16, 12]],
+  [70, [96, 52, 32]],
+  [140, [170, 102, 62]],
+  [200, [214, 156, 106]],
+  [255, [246, 214, 178]],
+];
+const TINT_LUT = (() => {
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let v = 0; v < 256; v++) {
+    let k = 1;
+    while (k < TINT_STOPS.length - 1 && v > TINT_STOPS[k][0]) k++;
+    const [a, ca] = TINT_STOPS[k - 1];
+    const [b, cb] = TINT_STOPS[k];
+    const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+    for (let c = 0; c < 3; c++) lut[v * 3 + c] = ca[c] + (cb[c] - ca[c]) * t;
+  }
+  return lut;
+})();
+
+function tintImage(img: CanvasImageSource & { width: number; height: number }): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return canvas;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const p = data.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const g = p[i]; // grayscale: R = G = B
+    p[i] = TINT_LUT[g * 3];
+    p[i + 1] = TINT_LUT[g * 3 + 1];
+    p[i + 2] = TINT_LUT[g * 3 + 2];
+  }
+  ctx.putImageData(data, 0, 0);
+  return canvas;
+}
+
+class TintedWmtsProvider extends WebMapTileServiceImageryProvider {
+  requestImage(...args: Parameters<WebMapTileServiceImageryProvider['requestImage']>) {
+    const p = super.requestImage(...args);
+    if (!p) return p;
+    return p.then((img) => tintImage(img as CanvasImageSource & { width: number; height: number }));
+  }
+}
+
+export function trekProvider(layer: TrekLayer, opts: { tint?: boolean } = {}): WebMapTileServiceImageryProvider {
+  const Ctor = opts.tint ? TintedWmtsProvider : WebMapTileServiceImageryProvider;
+  return new Ctor({
     url: layer.url,
     layer: layer.id,
     style: 'default',

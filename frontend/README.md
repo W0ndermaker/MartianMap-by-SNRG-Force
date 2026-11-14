@@ -22,7 +22,9 @@ Copy `.env.example` to `.env` to configure:
 
 | Element | Source |
 | --- | --- |
-| Base imagery | Mars Trek WMTS: HiRISE Curiosity site mosaic (~0.6 m/px), CTX mosaic, MOLA colour hillshade |
+| Base imagery | Mars Trek WMTS: Viking MDIM 2.1 colour mosaic (true colour, 232 m), CTX mosaic, HiRISE Curiosity site mosaic (~0.6 m/px) |
+| Mars colour tint | HiRISE and CTX are grayscale; by default the browser maps gray levels to a Mars palette. Visualisation only, not true colour; toggle in Layers |
+| MOLA shaded relief | Optional layer, MGS MOLA colour hillshade 463 m |
 | 3D terrain | USGS MSL Gale DEM mosaic 1 m (HiRISE stereo), averaged to ~10 m; HRSC-MOLA blended DEM 200 m around it |
 | Elevation / Slope layers | Rendered in the browser from the same HiRISE DEM grid |
 | Thermal layer | Mars Odyssey THEMIS daytime IR mosaic (Mars Trek) |

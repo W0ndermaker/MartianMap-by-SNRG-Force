@@ -20,6 +20,7 @@ interface Props {
   onHome: () => void;
   fallbackRoutes: FallbackRoute[];
   onPickFallback: (r: FallbackRoute) => void;
+  tilesPending: number;
 }
 
 const LAYER_LABELS: { id: LayerId; label: string; hint: string }[] = [
@@ -27,6 +28,7 @@ const LAYER_LABELS: { id: LayerId; label: string; hint: string }[] = [
   { id: 'slope', label: 'Slope', hint: 'Computed from the HiRISE DEM' },
   { id: 'thermal', label: 'Thermal (THEMIS day IR)', hint: 'Mars Odyssey THEMIS, 100 m' },
   { id: 'geology', label: 'Geology (USGS SIM 3292)', hint: 'Global geologic map, 1:20M' },
+  { id: 'mola', label: 'MOLA shaded relief', hint: 'MGS MOLA colour hillshade, 463 m' },
   { id: 'curiosity', label: 'Curiosity path', hint: 'NASA/JPL rover traverse' },
 ];
 
@@ -50,6 +52,8 @@ export default function MapHud(p: Props) {
   const toggleLayer = useAppStore((s) => s.toggleLayer);
   const resetPoints = useAppStore((s) => s.resetPoints);
   const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg);
+  const tint = useAppStore((s) => s.tint);
+  const setTint = useAppStore((s) => s.setTint);
   const setMaxSlopeDeg = useAppStore((s) => s.setMaxSlopeDeg);
 
   const hint = !health
@@ -80,6 +84,12 @@ export default function MapHud(p: Props) {
               <span className="rounded-full bg-fuchsia-500/25 px-2 py-0.5 text-xs font-medium text-fuchsia-200">Synthetic terrain (demo)</span>
             )}
           </div>
+          {p.tilesPending > 0 && (
+            <p className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-neutral-400 border-t-transparent" />
+              Loading imagery… ({p.tilesPending} tiles from NASA Mars Trek)
+            </p>
+          )}
           <p className="mt-1 flex items-center gap-2 text-neutral-300">
             {routePhase === 'loading' && (
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" aria-label="Loading" />
@@ -116,7 +126,12 @@ export default function MapHud(p: Props) {
         {/* layers */}
         <div className={`${panel} w-64 px-4 py-3`}>
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-400">Layers</h2>
-          <p className="mb-2 text-xs text-neutral-400">Base: HiRISE + CTX imagery on MOLA</p>
+          <p className="text-xs text-neutral-400">Base: HiRISE + CTX on Viking colour mosaic</p>
+          <label className="mb-2 mt-1 flex cursor-pointer items-start gap-2 py-0.5"
+            title="HiRISE and CTX are grayscale. The tint maps gray levels to a Mars palette; it is not true colour.">
+            <input type="checkbox" className="mt-0.5 accent-sky-500" checked={tint} onChange={() => setTint(!tint)} />
+            <span>Mars colour tint <span className="text-xs text-neutral-500">(visual, not true colour)</span></span>
+          </label>
           {LAYER_LABELS.map((l) => (
             <label key={l.id} className="flex cursor-pointer items-start gap-2 py-0.5" title={l.hint}>
               <input type="checkbox" className="mt-0.5 accent-sky-500" checked={layers[l.id]} onChange={() => toggleLayer(l.id)} />
@@ -184,7 +199,7 @@ export default function MapHud(p: Props) {
         )}
 
         <footer className={`${panel} self-stretch px-3 py-1.5 text-[11px] leading-snug text-neutral-400`}>
-          Imagery and data: NASA/JPL/University of Arizona (HiRISE) · NASA/JPL/MSSS (CTX) · NASA/JPL/ASU (THEMIS) ·
+          Imagery and data: NASA/JPL/USGS (Viking MDIM 2.1) · NASA/JPL/University of Arizona (HiRISE) · NASA/JPL/MSSS (CTX) · NASA/JPL/ASU (THEMIS) ·
           NASA/GSFC (MOLA) · ESA/DLR/FU Berlin (HRSC) · USGS Astrogeology (DEMs, SIM 3292 geologic map) ·
           Curiosity traverse NASA/JPL-Caltech · tiles via NASA Mars Trek (trek.nasa.gov).
           {p.terrainNote && <span className="block text-neutral-500">{p.terrainNote}</span>}

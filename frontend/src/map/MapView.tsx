@@ -24,6 +24,7 @@ import {
   Math as CMath,
   Matrix4,
   PolylineDashMaterialProperty,
+  RequestScheduler,
   ScreenSpaceEventHandler,
   ScreenSpaceEventType,
   VerticalOrigin,
@@ -56,6 +57,9 @@ import { useBackendBootstrap, useRoutePlanner } from './useBackendData';
 /** Cesium ion asset id of "Cesium Mars" (secondary source: Cesium Sandcastle "Mars" example; verify in your ion account). */
 const CESIUM_MARS_ASSET_ID = 3644333;
 const ION_TOKEN = (import.meta.env.VITE_CESIUM_ION_TOKEN ?? '').trim();
+
+// Mars Trek answers each tile in ~1.5 s; allow more parallel requests than Cesium's default (18).
+RequestScheduler.requestsByServer['trek.nasa.gov:443'] = 40;
 
 export type TerrainMode = 'local' | 'ion';
 
@@ -121,6 +125,10 @@ export default function MapView() {
   const sources = useRef<Record<string, CustomDataSource>>({});
   const overlayLayers = useRef<Partial<Record<LayerId, ImageryLayer>>>({});
   const imageryRef = useRef<ImageryLayerCollection | null>(null);
+  const baseRef = useRef<ImageryLayer[]>([]);
+  const baseTintRef = useRef<boolean | null>(null);
+  const [tilesPending, setTilesPending] = useState(0);
+  const tint = useAppStore((s) => s.tint);
   const curiosityRef = useRef<GeoJsonDataSource | null>(null);
   const stopFlyRef = useRef<(() => void) | null>(null);
 
@@ -222,12 +230,19 @@ export default function MapView() {
       void viewer.dataSources.add(ds);
     }
 
-    // Base imagery, coarse to fine: MOLA shade (global) -> CTX -> HiRISE.
+    // Base imagery, coarse to fine: Viking colour mosaic (global, true colour) -> CTX -> HiRISE
+    // (CTX/HiRISE are grayscale; optionally tinted, see mars.ts).
     const addBase = (target: ImageryLayerCollection) => {
-      for (const l of [TREK_LAYERS.molaShade, TREK_LAYERS.ctx, TREK_LAYERS.hirise]) {
-        target.add(new ImageryLayer(trekProvider(l)));
-      }
+      target.add(new ImageryLayer(trekProvider(TREK_LAYERS.vikingColor)));
+      const tint = useAppStore.getState().tint;
+      baseRef.current = [TREK_LAYERS.ctx, TREK_LAYERS.hirise].map((l) => {
+        const il = new ImageryLayer(trekProvider(l, { tint }));
+        target.add(il);
+        return il;
+      });
+      baseTintRef.current = tint;
     };
+    const tileListener = scene.globe.tileLoadProgressEvent.addEventListener((n: number) => setTilesPending(n));
     imageryRef.current = viewer.imageryLayers;
     if (mode === 'local') addBase(viewer.imageryLayers);
 
@@ -266,6 +281,8 @@ export default function MapView() {
 
     return () => {
       destroyed = true;
+      tileListener();
+      baseRef.current = [];
       container.removeEventListener('gesturestart', onGestureStart, opts);
       container.removeEventListener('gesturechange', onGestureChange, opts);
       container.removeEventListener('gestureend', onGestureStart, opts);
@@ -478,6 +495,21 @@ export default function MapView() {
     });
   }, [profileHoverIndex, route, routeCum, viewerReady]);
 
+  // ---------- swap CTX/HiRISE between tinted and grayscale in place ----------
+  useEffect(() => {
+    const imagery = imageryRef.current;
+    if (!imagery || baseTintRef.current === null || baseTintRef.current === tint) return;
+    const sources = [TREK_LAYERS.ctx, TREK_LAYERS.hirise];
+    baseRef.current = baseRef.current.map((old, i) => {
+      const index = imagery.indexOf(old);
+      const fresh = new ImageryLayer(trekProvider(sources[i], { tint }));
+      imagery.remove(old, true);
+      imagery.add(fresh, index >= 0 ? index : undefined);
+      return fresh;
+    });
+    baseTintRef.current = tint;
+  }, [tint, viewerReady]);
+
   // ---------- switchable layers ----------
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -498,17 +530,18 @@ export default function MapView() {
       if (existing) return;
       let provider;
       if (id === 'thermal') provider = trekProvider(TREK_LAYERS.thermal);
+      else if (id === 'mola') provider = trekProvider(TREK_LAYERS.molaShade);
       else if (id === 'geology') provider = trekProvider(TREK_LAYERS.geology);
       else if (!fine) {
         setNotice('Elevation and slope layers need the local HiRISE terrain, which is not loaded.');
         return;
       } else provider = id === 'elevation' ? await elevationOverlay(fine) : await slopeOverlay(fine);
       if (cancelled || overlayLayers.current[id] || viewer.isDestroyed()) return;
-      const layer = new ImageryLayer(provider, { alpha: id === 'geology' ? 0.55 : 0.7 });
+      const layer = new ImageryLayer(provider, { alpha: id === 'geology' ? 0.55 : id === 'mola' ? 0.6 : 0.7 });
       imagery.add(layer);
       overlayLayers.current[id] = layer;
     };
-    void Promise.all((['elevation', 'slope', 'thermal', 'geology'] as const).map(ensure));
+    void Promise.all((['elevation', 'slope', 'thermal', 'geology', 'mola'] as const).map(ensure));
 
     // Curiosity traverse (vector, clamped to the ground)
     (async () => {
@@ -614,6 +647,7 @@ export default function MapView() {
         onFlyover={toggleFlyover}
         onHome={() => flyHome()}
         fallbackRoutes={fallbackRoutes}
+        tilesPending={tilesPending}
         onPickFallback={pickFallback}
       />
     </div>
