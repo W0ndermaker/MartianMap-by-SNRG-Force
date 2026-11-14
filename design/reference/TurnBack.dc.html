@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Martian Map — Turn back alert</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0F14}
+a{color:#22D3EE}a:hover{color:#67E8F9}
+@keyframes mmPulse{0%{opacity:1}50%{opacity:0.55}100%{opacity:1}}
+@keyframes mmRing{0%{r:14;opacity:0.9}100%{r:46;opacity:0}}
+</style>
+</helmet>
+<div style="min-height: 900px; background: #0B0F14; color: #F2F4F5; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap">
+<span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 15px; letter-spacing: 0.18em">MARTIAN MAP</span>
+<span style="font-size: 13px; color: #9AA4AE">EVA in progress · Pahrump Hills</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<span style="padding: 6px 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; color: #C9D1D9">T+4:15</span>
+<span style="padding: 6px 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; color: #C9D1D9">12:45 LMST</span>
+<span style="padding: 6px 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; color: #C9D1D9">SIMULATED SUIT TELEMETRY</span>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 auto">
+
+<section aria-label="3D map with the return route" style="flex: 999 1 560px; min-width: 0; position: relative; height: 844px; overflow: hidden">
+<svg aria-hidden="true" viewBox="0 0 1060 844" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%">
+<defs>
+<linearGradient id="tbSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A1C17"/><stop offset="0.55" stop-color="#8C5B43"/><stop offset="1" stop-color="#C9926B"/></linearGradient>
+<linearGradient id="tbGround" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9A5534"/><stop offset="0.45" stop-color="#7C3F25"/><stop offset="1" stop-color="#4A2416"/></linearGradient>
+<linearGradient id="tbMount" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B9784F"/><stop offset="1" stop-color="#7A4228"/></linearGradient>
+<radialGradient id="tbVignette" cx="0.5" cy="0.55" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3A0806" stop-opacity="0.7"/></radialGradient>
+<filter id="tbGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<marker id="tbArrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#22D3EE"/></marker>
+</defs>
+<rect width="1060" height="844" fill="url(#tbGround)"/>
+<rect width="1060" height="250" fill="url(#tbSky)"/>
+<path d="M0 250 L120 236 L260 214 L380 168 L470 120 L540 96 L610 110 L700 150 L820 196 L940 222 L1060 236 L1060 300 L0 300 Z" fill="url(#tbMount)"/>
+<path d="M0 300 C200 280 400 290 600 270 C780 254 920 262 1060 250 L1060 844 L0 844 Z" fill="url(#tbGround)"/>
+<g fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="1.5">
+<path d="M0 360 C220 330 420 350 640 320 C820 296 960 306 1060 296"/>
+<path d="M0 430 C200 400 460 430 680 392 C860 362 980 372 1060 360"/>
+<path d="M0 520 C240 486 480 520 720 476 C880 448 990 456 1060 446"/>
+<path d="M0 630 C260 590 520 630 760 580 C900 552 1000 560 1060 552"/>
+<path d="M0 760 C280 712 560 760 800 700 C930 670 1010 680 1060 672"/>
+</g>
+<path d="M650 520 C700 480 740 470 790 400" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="4" stroke-dasharray="4 8" stroke-linecap="round"/>
+<path d="M650 520 C600 560 570 552 520 600 C470 650 380 690 300 660" fill="none" stroke="#0B0F14" stroke-opacity="0.7" stroke-width="12" stroke-linecap="round"/>
+<path d="M650 520 C600 560 570 552 520 600 C470 650 380 690 300 660" fill="none" stroke="#22D3EE" stroke-width="5" stroke-linecap="round" filter="url(#tbGlow)" marker-mid="url(#tbArrow)"/>
+<g fill="#22D3EE"><path d="M560 566 l-12 2 l8 9 Z"/><path d="M430 668 l-12 -1 l7 10 Z"/></g>
+<g transform="translate(790 400)"><path d="M0 0 C-12 -16 -14 -24 -14 -30 A14 14 0 0 1 14 -30 C14 -24 12 -16 0 0 Z" fill="#5B6570" stroke="#0B0F14" stroke-width="3"/><circle cy="-30" r="5" fill="#0B0F14"/><text x="22" y="-26" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" fill="#9AA4AE" letter-spacing="1.5">PAHRUMP HILLS</text></g>
+<g transform="translate(300 660)"><circle r="22" fill="#22D3EE" fill-opacity="0.2"/><circle r="9" fill="#F2F4F5" stroke="#0B0F14" stroke-width="3"/><text x="18" y="34" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" fill="#F2F4F5" letter-spacing="1.5">BASE · 51 MIN</text></g>
+<g transform="translate(650 520)">
+<circle r="14" fill="none" stroke="#FF3B30" stroke-width="2" style="animation: mmRing 1.6s ease-out infinite"/>
+<circle r="11" fill="#FF3B30" stroke="#0B0F14" stroke-width="3"/>
+<circle r="4" fill="#0B0F14"/>
+<g transform="translate(20 -44)"><rect width="104" height="26" rx="6" fill="#0B0F14" fill-opacity="0.85"/><text x="10" y="17" font-family="JetBrains Mono, monospace" font-size="12" font-weight="600" fill="#FF6B62" letter-spacing="1">YOU · EVA-1</text></g>
+</g>
+<rect width="1060" height="844" fill="url(#tbVignette)"/>
+</svg>
+
+<div role="alert" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-radius: 12px; background: rgba(255,59,48,0.92); color: #FFFFFF; box-shadow: 0 10px 40px rgba(255,59,48,0.35); animation: mmPulse 1.2s ease-in-out infinite">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="9"/><path d="M6 11 H16"/></svg>
+<span style="font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px; letter-spacing: 0.12em">TURN BACK NOW · REROUTED TO BASE</span>
+</div>
+
+<div style="position: absolute; left: 20px; bottom: 20px; padding: 12px 16px; border-radius: 12px; background: rgba(11,15,20,0.72); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 10px; font-size: 13px; color: #C9D1D9">
+<span style="width: 24px; height: 4px; border-radius: 2px; background: #22D3EE"></span>Return route to base
+<span style="width: 24px; height: 0; border-top: 3px dotted rgba(255,255,255,0.5); margin-left: 12px"></span>Cancelled leg
+</div>
+</section>
+
+<aside aria-label="EVA Copilot" style="flex: 1 1 380px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 16px; border-left: 1px solid rgba(255,255,255,0.08)">
+
+<div style="padding: 20px; border-radius: 14px; border: 2px solid #FF3B30; background: rgba(255,59,48,0.12); display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; gap: 14px; align-items: center">
+<svg aria-hidden="true" width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#FF3B30" stroke-width="3" stroke-linecap="round"><path d="M16 4 H32 L44 16 V32 L32 44 H16 L4 32 V16 Z"/><path d="M15 24 H33"/></svg>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 36px; font-weight: 700; line-height: 1; color: #FF5A50; letter-spacing: 0.02em">TURN BACK</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; color: #FFB4AE">WARNING · EVA COPILOT</span>
+</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 10px; background: rgba(11,15,20,0.6)">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2F4F5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: 0 0 auto; margin-top: 2px"><path d="M4 9 H8 L13 5 V19 L8 15 H4 Z"/><path d="M16.5 8.5 A5 5 0 0 1 16.5 15.5"/><path d="M19 6 A8.5 8.5 0 0 1 19 18"/></svg>
+<span style="font-size: 17px; line-height: 1.45; font-weight: 500">“Turn back now. 81 minutes of oxygen at your current rate — base is 51 minutes away, plus a 30-minute reserve.”</span>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div style="padding: 14px; border-radius: 12px; background: #121820; display: flex; flex-direction: column; gap: 8px; grid-column: span 2">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; color: #9AA4AE">OXYGEN</span>
+<span style="display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #FFB020"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M6 1 L11 11 H1 Z" fill="#FFB020"/></svg>+25 % above plan</span>
+</div>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 600">24<span style="font-size: 14px; color: #9AA4AE"> % · 81 min left</span></span>
+<div style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); position: relative; overflow: hidden">
+<div style="position: absolute; left: 0; top: 0; bottom: 0; width: 24%; background: #FF3B30; border-radius: 4px"></div>
+<div style="position: absolute; left: 7.1%; top: 0; bottom: 0; width: 2px; background: #FFB020"></div>
+</div>
+</div>
+<div style="padding: 14px; border-radius: 12px; background: #121820; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; color: #9AA4AE">TO BASE</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600">51<span style="font-size: 14px; color: #9AA4AE"> min</span></span>
+<span style="font-size: 12px; color: #9AA4AE">+ 30 min reserve</span>
+</div>
+<div style="padding: 14px; border-radius: 12px; background: #121820; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; color: #9AA4AE">ELAPSED</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600">4:15<span style="font-size: 14px; color: #9AA4AE"> h</span></span>
+<span style="font-size: 12px; color: #9AA4AE">since base</span>
+</div>
+</div>
+
+<div style="padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.14em; color: #9AA4AE">COPILOT LOG</span>
+<div style="display: flex; gap: 10px; font-size: 13px; line-height: 1.4"><span style="font-family: 'JetBrains Mono', monospace; color: #9AA4AE; flex: 0 0 48px">12:45</span><span style="color: #FF6B62; font-weight: 600; flex: 0 0 auto">WARNING</span><span style="color: #C9D1D9">Turn-back point reached</span></div>
+<div style="display: flex; gap: 10px; font-size: 13px; line-height: 1.4"><span style="font-family: 'JetBrains Mono', monospace; color: #9AA4AE; flex: 0 0 48px">12:20</span><span style="color: #FFB020; font-weight: 600; flex: 0 0 auto">CAUTION</span><span style="color: #C9D1D9">Breathing 25 % above plan on the climb</span></div>
+<div style="display: flex; gap: 10px; font-size: 13px; line-height: 1.4"><span style="font-family: 'JetBrains Mono', monospace; color: #9AA4AE; flex: 0 0 48px">08:30</span><span style="color: #34D27B; font-weight: 600; flex: 0 0 auto">GO</span><span style="color: #C9D1D9">EVA started, all nominal</span></div>
+</div>
+
+<button type="button" style="height: 52px; border-radius: 12px; border: 0; background: #FF3B30; color: #FFFFFF; font: 600 16px Inter, sans-serif; letter-spacing: 0.02em; cursor: pointer">Acknowledge &amp; follow return route</button>
+
+<span style="font-size: 11px; color: #8A94A0">Suit telemetry is simulated. Terrain and route are real NASA data.</span>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

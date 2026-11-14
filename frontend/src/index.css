@@ -1,5 +1,25 @@
 @import "tailwindcss";
+@import "./theme.css";
 
-body {
-  background: #0c0a09;
+@layer base {
+  html,
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+  }
+  /* Numbers line up: monospace digits of equal width wherever font-mono is used. */
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+  a {
+    color: var(--color-route);
+  }
+  a:hover {
+    color: var(--color-route-hover);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-route);
+    outline-offset: 2px;
+  }
 }

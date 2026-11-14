@@ -1,0 +1,75 @@
+/*
+ * Design tokens — the only place with colors, fonts and sizes.
+ * Source: design/reference/Palette.dc.html. Components use the Tailwind classes these tokens
+ * generate (bg-card, text-muted, font-mono, …); the 3D map reads the same CSS variables
+ * through src/theme.ts.
+ *
+ * Status colors (go, caution, alert, unknown) are for safety status only, always together with
+ * an icon and a word. Alert colors follow flight-deck convention: red = warning, amber = caution.
+ * Contrast on bg (#0B0F14): text 17.4, text-2 12.5, muted 7.6, unknown 6.3, go 9.8,
+ * caution 10.5, alert 5.4, route 10.6 — all >= 4.5:1. Text on an alert fill uses bg (5.4:1);
+ * white on alert would be 3.6:1.
+ */
+@theme {
+  --color-bg: #0b0f14; /* page, panels, dark halo around marks on the terrain */
+  --color-card: #121820; /* cards */
+  --color-glass: rgb(11 15 20 / 0.72); /* panels over the map, with backdrop blur */
+  --color-line: rgb(255 255 255 / 0.08); /* borders and dividers */
+  --color-line-strong: rgb(255 255 255 / 0.18); /* button borders, chips */
+  --color-track: rgb(255 255 255 / 0.08); /* empty part of bars */
+  --color-text: #f2f4f5; /* text, walk-back rings */
+  --color-text-2: #c9d1d9; /* secondary text */
+  --color-muted: #9aa4ae; /* labels, units */
+  --color-route: #22d3ee; /* route and the primary action */
+  --color-route-hover: #67e8f9;
+  --color-white: #ffffff; /* straight-line dashes on the map */
+
+  /* Safety status only. */
+  --color-go: #34d27b;
+  --color-caution: #ffb020;
+  --color-alert: #ff3b30; /* NO-GO, TURN BACK, EMERGENCY */
+  --color-unknown: #8a94a0; /* no data */
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-status: 40px; /* GO / NO-GO verdict */
+  --text-status--line-height: 1;
+  --text-status-sm: 36px; /* TURN BACK in the Copilot */
+  --text-status-sm--line-height: 1;
+  --text-number: 28px; /* metric values */
+  --text-number--line-height: 1.15;
+  --text-number-lg: 32px;
+  --text-number-lg--line-height: 1.15;
+  --text-label: 11px; /* mono caps labels */
+  --text-label--letter-spacing: 0.14em;
+  --text-quote: 17px;
+  --text-quote--line-height: 1.45;
+
+  --radius-card: 12px;
+  --radius-panel: 14px;
+  --radius-chip: 999px;
+
+  --animate-alert-pulse: alert-pulse 1.2s ease-in-out infinite;
+  @keyframes alert-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
+
+:root {
+  /* Minimum touch target and the map side panel width. */
+  --size-tap: 44px;
+  --size-panel: 380px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-alert-pulse {
+    animation: none;
+  }
+}
