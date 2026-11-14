@@ -1,8 +1,9 @@
+import itertools
 import math
 
 import pytest
 
-from app.core.geo import bounds, make_grid, to_cell, to_lonlat
+from app.core.geo import bounds, make_grid, polyline_to_cells, to_cell, to_lonlat
 
 BOUNDS = (137.30, -4.78, 137.46, -4.56)
 
@@ -51,3 +52,17 @@ def test_bounds_inside_requested(grid):
     assert max_lat == pytest.approx(-4.56)
     assert min_lat >= BOUNDS[1] - 1e-9
     assert max_lon <= BOUNDS[2] + 1e-9
+
+
+def test_polyline_to_cells_is_8_connected_and_covers_ends(grid):
+    a = to_lonlat(grid, 5, 5)
+    b = to_lonlat(grid, 12, 30)
+    cells = polyline_to_cells(grid, [a, b])
+    assert cells[0] == (5, 5) and cells[-1] == (12, 30)
+    for (r0, c0), (r1, c1) in itertools.pairwise(cells):
+        assert max(abs(r1 - r0), abs(c1 - c0)) == 1
+
+
+def test_polyline_to_cells_skips_points_outside_grid(grid):
+    inside = to_lonlat(grid, 3, 3)
+    assert polyline_to_cells(grid, [(10.0, 10.0), inside]) == [(3, 3)]

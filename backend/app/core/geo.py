@@ -80,3 +80,26 @@ def bounds(grid: GridSpec) -> tuple[float, float, float, float]:
     )
     min_lat = grid.lat_top - math.degrees(height_m / MARS_RADIUS_M)
     return (grid.lon0, min_lat, max_lon % 360.0, grid.lat_top)
+
+
+def polyline_to_cells(
+    grid: GridSpec, coords: list[tuple[float, float]] | list[list[float]]
+) -> list[tuple[int, int]]:
+    """Return the 8-connected chain of grid cells that a [lon, lat] polyline passes through.
+
+    Points outside the grid are skipped; consecutive cells are joined with a straight
+    raster line, so the result can be measured like a planned path.
+    """
+    cells: list[tuple[int, int]] = []
+    for point in coords:
+        cell = to_cell(grid, point[0], point[1])
+        if cell is None:
+            continue
+        if not cells:
+            cells.append(cell)
+            continue
+        (r0, c0), (r1, c1) = cells[-1], cell
+        steps = max(abs(r1 - r0), abs(c1 - c0))
+        for k in range(1, steps + 1):
+            cells.append((r0 + round((r1 - r0) * k / steps), c0 + round((c1 - c0) * k / steps)))
+    return cells
