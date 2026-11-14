@@ -104,3 +104,44 @@ def test_health_terrain_real_when_dem_readable(monkeypatch, tmp_path):
         dst.write(np.zeros((1, 2, 2), dtype="float32"))
     monkeypatch.setenv("DEM_PATH", str(dem))
     assert client.get("/api/health").json()["terrain"] == "real"
+
+
+def _route(**overrides):
+    body = {**VALID_ROUTE_BODY, **overrides}
+    r = client.post("/api/route", json=body)
+    assert r.status_code == 200
+    return r.json()
+
+
+def test_route_is_real_and_valid():
+    data = _route()
+    assert data["status"] == "ok"
+    coords = data["path"]["coordinates"]
+    assert len(coords) > 2
+    assert len(data["profile"]) <= 300
+    assert data["profile"][0]["dist_m"] == 0
+    assert data["distance_m"] > 0 and data["duration_min"] > 0
+    # Path starts and ends within one cell of the requested points.
+    assert coords[0][:2] == pytest.approx(VALID_ROUTE_BODY["start"], abs=1e-3)
+    assert coords[-1][:2] == pytest.approx(VALID_ROUTE_BODY["goal"], abs=1e-3)
+
+
+@pytest.mark.parametrize("max_slope", [5, 10, 20])
+def test_route_never_exceeds_max_slope(max_slope):
+    data = _route(max_slope_deg=max_slope)
+    if data["status"] == "ok":
+        assert data["max_slope_deg"] <= max_slope
+        assert all(p["slope_deg"] <= max_slope for p in data["profile"])
+
+
+def test_route_out_of_bounds_is_200():
+    data = _route(goal=[10.0, 10.0])
+    assert data["status"] == "out_of_bounds"
+    assert "outside" in data["reason"]
+    assert data["path"] is None
+
+
+def test_route_no_route_when_slope_limit_tiny():
+    data = _route(max_slope_deg=0.01)
+    assert data["status"] == "no_route"
+    assert data["reason"]
