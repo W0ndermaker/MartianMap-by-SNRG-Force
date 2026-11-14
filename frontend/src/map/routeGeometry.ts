@@ -90,3 +90,66 @@ export function bearing(a: [number, number], b: [number, number]): number {
   const x = Math.cos(a[1] * r) * Math.sin(b[1] * r) - Math.sin(a[1] * r) * Math.cos(b[1] * r) * Math.cos((b[0] - a[0]) * r);
   return Math.atan2(y, x);
 }
+
+export interface StraightRun {
+  coords: LonLat[]
+  steep: boolean
+}
+
+export interface StraightLine {
+  runs: StraightRun[]
+  /** Length of the straight line steeper than the limit, metres. */
+  steepM: number
+  maxSlopeDeg: number
+  lengthM: number
+}
+
+/** Ground slope in degrees at a point, from heights 1 cell (stepM) around it; null without data. */
+export function groundSlopeAt(
+  heightAt: (lon: number, lat: number) => number | null,
+  p: LonLat,
+  stepM: number,
+): number | null {
+  const dLat = ((stepM / R_MARS) * 180) / Math.PI
+  const dLon = dLat / Math.cos((p[1] * Math.PI) / 180)
+  const e = heightAt(p[0] + dLon, p[1])
+  const w = heightAt(p[0] - dLon, p[1])
+  const n = heightAt(p[0], p[1] + dLat)
+  const s = heightAt(p[0], p[1] - dLat)
+  if (e == null || w == null || n == null || s == null) return null
+  return (Math.atan(Math.hypot((e - w) / (2 * stepM), (n - s) / (2 * stepM))) * 180) / Math.PI
+}
+
+/**
+ * The straight line from start to goal, sampled every stepM and split into runs that are within or
+ * above the slope limit: the "what if you walked straight there" comparison for the route.
+ */
+export function straightLine(
+  start: LonLat,
+  goal: LonLat,
+  heightAt: (lon: number, lat: number) => number | null,
+  maxSlopeDeg: number,
+  stepM: number,
+): StraightLine {
+  const lengthM = distanceM(start, goal)
+  const n = Math.max(2, Math.ceil(lengthM / stepM))
+  const runs: StraightRun[] = []
+  let steepM = 0
+  let maxSlope = 0
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    const p: LonLat = [start[0] + (goal[0] - start[0]) * t, start[1] + (goal[1] - start[1]) * t]
+    const slope = groundSlopeAt(heightAt, p, stepM) ?? 0
+    maxSlope = Math.max(maxSlope, slope)
+    const steep = slope > maxSlopeDeg
+    if (steep && i > 0) steepM += lengthM / n
+    const last = runs[runs.length - 1]
+    if (last && last.steep === steep) last.coords.push(p)
+    else {
+      // start the new run at the previous point so the runs join without gaps
+      const prev = last ? last.coords[last.coords.length - 1] : null
+      runs.push({ coords: prev ? [prev, p] : [p], steep })
+    }
+  }
+  return { runs, steepM, maxSlopeDeg: maxSlope, lengthM }
+}

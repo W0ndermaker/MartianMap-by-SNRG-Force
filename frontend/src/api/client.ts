@@ -2,7 +2,14 @@
 // so the app keeps working after the hackathon when the free server is asleep.
 
 import * as offline from './offline'
-import type { Conditions, Health, PoiCollection, RouteRequest, RouteResponse } from './types'
+import type {
+  Conditions,
+  CopilotScenario,
+  Health,
+  PoiCollection,
+  RouteRequest,
+  RouteResponse,
+} from './types'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 /** A free-tier server sleeps when idle and needs up to about a minute to wake up. */
@@ -53,4 +60,8 @@ export const api = {
     ),
 
   poi: () => withFallback(() => request<PoiCollection>('/poi'), offline.offlinePoi),
+
+  /** Demo EVA for the Copilot: simulated suit telemetry on a real route. */
+  copilotScenario: () =>
+    withFallback(() => request<CopilotScenario>('/copilot/scenario'), offline.offlineCopilotScenario),
 }

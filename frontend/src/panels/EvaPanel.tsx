@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { OFFLINE_ROUTE_REASON, offlineDemoPairs } from '../api/offline'
 import type { LonLat, Verdict } from '../api/types'
+import { useMapStore } from '../map/mapStore'
 import { useAppStore } from '../store/useAppStore'
 import { fmt, fmtDistance, fmtDuration } from './format'
 
@@ -90,6 +91,8 @@ export function EvaPanel() {
   const state = useAppStore((s) => s.routeState)
   const offline = useAppStore((s) => s.offline)
   const clearRoute = useAppStore((s) => s.clearRoute)
+  const straight = useMapStore((s) => s.straight)
+  const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg)
 
   let body
   if (!start) body = <Hint text="Click the map to set a start point." />
@@ -135,6 +138,19 @@ export function EvaPanel() {
         />
         <Metric label="Ascent" value={fmt(route.ascent_m, 0, 'm')} />
         <Metric label="Descent" value={fmt(route.descent_m, 0, 'm')} />
+        {straight && (
+          <p
+            className={`col-span-2 rounded-lg px-3 py-2 text-xs ring-1 ${
+              straight.steepM > 0
+                ? 'bg-fuchsia-500/10 text-fuchsia-200 ring-fuchsia-400/40'
+                : 'bg-stone-800/70 text-stone-300 ring-white/10'
+            }`}
+          >
+            {straight.steepM > 0
+              ? `Walking straight there crosses ${fmt(straight.steepM, 0, 'm')} steeper than ${maxSlopeDeg}° (up to ${fmt(straight.maxSlopeDeg, 0, '°')}). The route goes around.`
+              : `The straight line stays within ${maxSlopeDeg}° here; the route follows easier ground.`}
+          </p>
+        )}
         {route.hazards && route.hazards.length > 0 && (
           <ul className="col-span-2 space-y-1 text-xs text-fuchsia-300">
             {route.hazards.slice(0, 4).map((h, i) => (

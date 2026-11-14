@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { ConditionsPanel } from './panels/ConditionsPanel'
+import { CopilotPanel } from './panels/CopilotPanel'
 import { EvaPanel } from './panels/EvaPanel'
 import { LayerControls } from './panels/LayerControls'
 import { PoiCard } from './panels/PoiCard'
@@ -77,6 +78,7 @@ export default function App() {
         </div>
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto lg:row-span-2">
           <EvaPanel />
+          <CopilotPanel />
           <PoiCard />
           <LayerControls />
         </aside>

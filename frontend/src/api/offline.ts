@@ -3,6 +3,7 @@
 
 import type {
   Conditions,
+  CopilotScenario,
   Health,
   LonLat,
   PoiCollection,
@@ -68,4 +69,10 @@ export async function offlineDemoPairs(): Promise<
     goal: r.request.goal,
     max_slope_deg: r.request.max_slope_deg,
   }))
+}
+
+/** Copilot demo scenario precomputed by the backend (data/copilot_scenario.json). */
+export async function offlineCopilotScenario(): Promise<CopilotScenario> {
+  const m = await import('@data/copilot_scenario.json')
+  return m.default as unknown as CopilotScenario
 }

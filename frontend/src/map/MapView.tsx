@@ -34,9 +34,11 @@ import {
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 import traverseUrl from '@data/curiosity_traverse.geojson?url';
+import reachUrl from '@data/reach_from_base.geojson?url';
 import { offlineDemoPairs } from '../api/offline';
 import type { LonLat, TraverseCollection } from '../api/types';
 import { useAppStore } from '../store/useAppStore';
+import { useCopilotStore } from '../store/useCopilotStore';
 import { elevationOverlay, noGoOverlay, slopeOverlay } from './demOverlays';
 import { startFlyover } from './flyover';
 import { useMapStore, type MapLayerId } from './mapStore';
@@ -51,7 +53,15 @@ import {
   toCesiumLon,
   trekProvider,
 } from './mars';
-import { bandRuns, cumulative, pointAtDistance, type LonLatElev, type SlopeBand } from './routeGeometry';
+import {
+  bandRuns,
+  bearing,
+  cumulative,
+  pointAtDistance,
+  straightLine,
+  type LonLatElev,
+  type SlopeBand,
+} from './routeGeometry';
 import { createLocalTerrain, type LocalTerrain } from './terrain';
 
 /** Cesium ion asset id of "Cesium Mars" (secondary source: Cesium Sandcastle "Mars" example; verify in your ion account). */
@@ -128,6 +138,18 @@ function traverseChains(fc: TraverseCollection): LonLat[][] {
     else chains.push(pts);
   }
   return chains;
+}
+
+/** Ring pieces shorter than this share of the ring's main line are not drawn. */
+const RING_MIN_SHARE = 0.15;
+
+interface GeoJsonRings {
+  type: 'FeatureCollection';
+  features: {
+    type: 'Feature';
+    geometry: { type: 'MultiLineString'; coordinates: [number, number][][] };
+    properties: { kind: 'ring' | 'walkback'; minutes: number; label: string; area_km2: number };
+  }[];
 }
 
 export default function MapView() {
@@ -241,7 +263,7 @@ export default function MapView() {
     container.addEventListener('gestureend', onGestureStart, opts);
     container.addEventListener('wheel', onWheel, opts);
 
-    for (const name of ['bounds', 'tracks', 'route', 'hazards', 'poi', 'points', 'highlight']) {
+    for (const name of ['bounds', 'tracks', 'reach', 'straight', 'route', 'hazards', 'poi', 'points', 'highlight', 'copilot']) {
       const ds = new CustomDataSource(name);
       sources.current[name] = ds;
       void viewer.dataSources.add(ds);
@@ -483,6 +505,161 @@ export default function MapView() {
       });
     }
   }, [route, maxSlopeDeg, layers.route, layers.hazards, viewerReady]);
+
+  // ---------- straight line vs route: what walking straight to the goal would cross ----------
+  const setStraight = useMapStore((s) => s.setStraight);
+  useEffect(() => {
+    const ds = sources.current.straight;
+    if (!ds) return;
+    ds.entities.removeAll();
+    const t = terrainRef.current;
+    const ok = route?.status === 'ok' && start && goal && t;
+    if (!ok) {
+      setStraight(null);
+      return;
+    }
+    const heightAt = (lon: number, lat: number) => t.heightAt(toCesiumLon(lon), lat);
+    const line = straightLine(start, goal, heightAt, maxSlopeDeg, health?.cell_size_m ?? 10);
+    setStraight({ steepM: line.steepM, maxSlopeDeg: line.maxSlopeDeg, lengthM: line.lengthM });
+    ds.show = layers.straight;
+    for (const run of line.runs) {
+      if (run.coords.length < 2) continue;
+      ds.entities.add({
+        polyline: {
+          positions: run.coords.map((c) => lonLatToCartesian(c)),
+          clampToGround: true,
+          width: run.steep ? 7 : 3,
+          material: run.steep
+            ? Color.fromCssColorString('#e879f9')
+            : new PolylineDashMaterialProperty({ color: Color.WHITE.withAlpha(0.7), dashLength: 16 }),
+        },
+      });
+    }
+  }, [route, start, goal, maxSlopeDeg, layers.straight, elevRange, viewerReady, health, setStraight]);
+
+  // ---------- walk-back rings from the base (precomputed by the backend) ----------
+  const [reachData, setReachData] = useState<GeoJsonRings | null>(null);
+  const [ringsShown, setRingsShown] = useState(0);
+  useEffect(() => {
+    if (!layers.reach || reachData) return;
+    fetch(reachUrl)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d: GeoJsonRings) => setReachData(d))
+      .catch(() => setNotice('Walk-back rings could not be loaded.'));
+  }, [layers.reach, reachData]);
+  // Rings appear one by one, spreading out from the base.
+  useEffect(() => {
+    if (!layers.reach || !reachData) {
+      setRingsShown(0);
+      return;
+    }
+    let n = 0;
+    const id = setInterval(() => {
+      n += 1;
+      setRingsShown(n);
+      if (n >= reachData.features.length) clearInterval(id);
+    }, 450);
+    return () => clearInterval(id);
+  }, [layers.reach, reachData]);
+  useEffect(() => {
+    const ds = sources.current.reach;
+    if (!ds) return;
+    ds.entities.removeAll();
+    if (!reachData || !layers.reach) return;
+    const feats = reachData.features.slice(0, ringsShown);
+    feats.forEach((f, i) => {
+      const walkback = f.properties.kind === 'walkback';
+      const color = walkback
+        ? Color.WHITE
+        : Color.fromCssColorString('#22d3ee').withAlpha(0.95 - (0.45 * i) / Math.max(1, feats.length));
+      let longest: [number, number][] = [];
+      for (const line of f.geometry.coordinates) if (line.length > longest.length) longest = line;
+      // Draw the main boundary and big lobes only; small islands around single knobs are noise here.
+      for (const line of f.geometry.coordinates) {
+        if (line.length < longest.length * RING_MIN_SHARE) continue;
+        ds.entities.add({
+          polyline: {
+            positions: line.map((c) => lonLatToCartesian(c)),
+            clampToGround: true,
+            width: walkback ? 5 : 3,
+            material: color,
+          },
+        });
+      }
+      if (longest.length) {
+        const at = longest[Math.floor(longest.length * 0.35)];
+        ds.entities.add({
+          position: lonLatToCartesian(at),
+          label: {
+            ...labelGraphics(walkback ? 'Walk-back limit' : f.properties.label, -10),
+            fillColor: walkback ? Color.WHITE : Color.fromCssColorString('#a5f3fc'),
+          },
+        });
+      }
+    });
+  }, [reachData, ringsShown, layers.reach, viewerReady]);
+
+  // ---------- EVA Copilot demo: astronaut marker, way out / way back, chase camera ----------
+  const copilotScenario = useCopilotStore((s) => s.scenario);
+  const copilotIndex = useCopilotStore((s) => s.index);
+  const copilotState = useCopilotStore((s) => s.state);
+  const chaseHeading = useRef<number | null>(null);
+  const copilotActive = copilotState === 'playing' || copilotState === 'done';
+  useEffect(() => {
+    const ds = sources.current.copilot;
+    const viewer = viewerRef.current;
+    if (!ds || !viewer) return;
+    ds.entities.removeAll();
+    // The demo has its own route: hide the planner's lines while it plays.
+    for (const name of ['route', 'hazards', 'straight', 'tracks'] as const) {
+      const other = sources.current[name];
+      const normal = name === 'tracks' ? layers.traverse : layers[name];
+      if (other) other.show = copilotActive ? false : normal;
+    }
+    if (!copilotActive || !copilotScenario) {
+      if (chaseHeading.current !== null) viewer.camera.lookAtTransform(Matrix4.IDENTITY);
+      chaseHeading.current = null;
+      return;
+    }
+    const steps = copilotScenario.steps;
+    const step = steps[Math.min(copilotIndex, steps.length - 1)];
+    const line = (coords: [number, number, number][], css: string, width: number) =>
+      ds.entities.add({
+        polyline: { positions: coords.map((c) => lonLatToCartesian(c)), clampToGround: true, width, material: Color.fromCssColorString(css) },
+      });
+    line(copilotScenario.outbound_path.coordinates, '#22d3ee', 6);
+    if (step.phase === 'back' && copilotScenario.return_path) line(copilotScenario.return_path.coordinates, '#e879f9', 7);
+    const level = step.copilot.level;
+    ds.entities.add({
+      position: lonLatToCartesian(step.position),
+      point: {
+        pixelSize: 16,
+        color: level === 'go' ? Color.CYAN : level === 'caution' ? Color.fromCssColorString('#fef9c3') : Color.fromCssColorString('#e879f9'),
+        outlineColor: Color.BLACK,
+        outlineWidth: 3,
+        heightReference: HeightReference.CLAMP_TO_GROUND,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+      label: labelGraphics(`Astronaut · O₂ ${Math.round(step.o2_pct)} %`, -22),
+    });
+
+    // Chase camera: low behind the astronaut, looking along the walk.
+    if (copilotState !== 'playing') return;
+    stopFlyRef.current?.();
+    const next = steps[Math.min(copilotIndex + 3, steps.length - 1)];
+    const target = next === step ? (chaseHeading.current ?? 0) : bearing(step.position, next.position);
+    if (chaseHeading.current === null) chaseHeading.current = target;
+    else {
+      const delta = Math.atan2(Math.sin(target - chaseHeading.current), Math.cos(target - chaseHeading.current));
+      chaseHeading.current += delta * 0.25;
+    }
+    const t = terrainRef.current;
+    const ground = t?.heightAt(toCesiumLon(step.position[0]), step.position[1]) ?? -4500;
+    viewer.camera.lookAt(
+      lonLatToCartesian(step.position, ground + 2),
+      new HeadingPitchRange(chaseHeading.current, CMath.toRadians(-22), 420),
+    );
+  }, [copilotScenario, copilotIndex, copilotState, copilotActive, layers, viewerReady]);
 
   // ---------- profile hover highlight ----------
   const routeCum = useMemo(() => {

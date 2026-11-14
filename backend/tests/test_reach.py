@@ -33,9 +33,9 @@ def test_wall_forces_detour_and_blocks_unreachable_cells():
 
 
 def test_rings_are_ordered_and_outer_is_walkback():
-    t = _terrain(np.zeros((61, 61)))
-    minutes = travel_minutes(t, (30, 30), 20.0, 1.0)
-    levels = [1.0, 2.0, 3.0]
+    t = _terrain(np.zeros((201, 201)))
+    minutes = travel_minutes(t, (100, 100), 20.0, 1.0)
+    levels = [3.0, 5.0, 8.0]  # rings of 18-48 cells radius, above the noise filter
     feats = reach_features(t, minutes, levels)
     areas = [f["properties"]["area_km2"] for f in feats]
     assert areas == sorted(areas)

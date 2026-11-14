@@ -111,3 +111,38 @@ export interface TraverseCollection {
       }
   )[]
 }
+
+/** EVA Copilot (Air module), see docs/API_CONTRACT.md sections 5-6. */
+export type CopilotLevel = 'go' | 'caution' | 'turn_back' | 'emergency'
+
+export interface CopilotAir {
+  level: CopilotLevel
+  reasons: string[]
+  o2_remaining_pct: number
+  rate_pct_per_min: number
+  planned_rate_pct_per_min: number
+  minutes_of_o2_left: number
+  minutes_to_base: number | null
+  turn_back_in_min: number | null
+}
+
+export interface CopilotStep {
+  t_min: number
+  position: LonLat
+  phase: 'out' | 'back'
+  o2_pct: number
+  slope_deg: number
+  copilot: CopilotAir
+}
+
+export interface CopilotScenario {
+  note: string
+  outbound_path: { type: 'LineString'; coordinates: [number, number, number][] }
+  return_path: { type: 'LineString'; coordinates: [number, number, number][] } | null
+  leak_at_min: number
+  turned_back_at_min: number | null
+  arrived_back: boolean
+  final_o2_pct: number
+  events: { t_min: number; level: CopilotLevel; message: string }[]
+  steps: CopilotStep[]
+}

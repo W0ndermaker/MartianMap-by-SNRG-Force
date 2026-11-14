@@ -96,8 +96,8 @@ HAZARD_SLOPE_FRACTION = 0.8
 REACH_RING_MINUTES = (30.0, 60.0, 120.0, 180.0)
 # Contour simplification tolerance, in grid cells (keeps the GeoJSON small for the browser).
 REACH_SIMPLIFY_CELLS = 1.0
-# Contour loops shorter than this many cells (about 300 m) are dropped as map-scale noise.
-REACH_MIN_RING_CELLS = 30
+# Contour loops shorter than this many cells (about 1 km) are dropped as map-scale noise.
+REACH_MIN_RING_CELLS = 100
 
 # EVA Copilot (Air module).
 # Emergency oxygen kept back: the EMU secondary oxygen pack holds 30 minutes of oxygen

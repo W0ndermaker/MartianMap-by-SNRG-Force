@@ -13,6 +13,10 @@ export interface Layers {
   hazards: boolean
   poi: boolean
   traverse: boolean
+  /** Walk-back rings from the base (data/reach_from_base.geojson). */
+  reach: boolean
+  /** Straight line start to goal, magenta where it crosses slopes above the limit. */
+  straight: boolean
 }
 
 export interface AppState {
@@ -69,7 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   conditionsState: 'idle',
   poi: null,
   selectedPoiId: null,
-  layers: { route: true, hazards: true, poi: true, traverse: true },
+  layers: { route: true, hazards: true, poi: true, traverse: true, reach: false, straight: true },
 
   init: async () => {
     set({ connecting: true })

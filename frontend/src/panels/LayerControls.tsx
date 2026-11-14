@@ -6,6 +6,8 @@ const LAYER_LABEL: Record<keyof Layers, string> = {
   hazards: 'Hazards',
   poi: 'Points of interest',
   traverse: 'Curiosity traverse',
+  reach: 'Walk-back rings from base',
+  straight: 'Straight line vs route',
 }
 
 export function LayerControls() {
