@@ -174,8 +174,8 @@ function DemoRoutes() {
   )
 }
 
-/** Metric cards of a planned route. */
-function RouteCards({ route }: { route: RouteResponse }) {
+/** Slope limit card with its slider; re-plans when released. `routeMax` is the route's steepest point. */
+function SlopeLimit({ routeMax, wide }: { routeMax?: number | null; wide?: boolean }) {
   const maxSlopeDeg = useAppStore((s) => s.maxSlopeDeg)
   const setMaxSlope = useAppStore((s) => s.setMaxSlope)
   const [draft, setDraft] = useState(maxSlopeDeg)
@@ -183,7 +183,41 @@ function RouteCards({ route }: { route: RouteResponse }) {
   const commit = () => {
     if (draft !== maxSlopeDeg) setMaxSlope(draft)
   }
+  return (
+    <Card wide={wide}>
+      <Label>Slope limit</Label>
+      <span className="font-mono text-number font-semibold">
+        {draft}
+        <span className="text-sm font-normal text-muted"> °</span>
+      </span>
+      <input
+        type="range"
+        min={SLOPE_RANGE_DEG[0]}
+        max={SLOPE_RANGE_DEG[1]}
+        step={1}
+        value={draft}
+        onChange={(e) => setDraft(Number(e.target.value))}
+        onPointerUp={commit}
+        onKeyUp={commit}
+        onBlur={commit}
+        className="h-(--size-tap) w-full accent-route"
+        aria-label="Maximum walkable slope"
+      />
+      <span className="text-xs text-muted">
+        {routeMax === undefined ? (
+          'Raise the limit to look for a route'
+        ) : (
+          <>
+            route max <span className="font-mono">{fmt(routeMax, 1, '°')}</span>
+          </>
+        )}
+      </span>
+    </Card>
+  )
+}
 
+/** Metric cards of a planned route. */
+function RouteCards({ route }: { route: RouteResponse }) {
   const roundTrip = route.round_trip_o2_used_pct
   // Reserve as "100 − rounded round trip" so used and reserve always add up to 100 %.
   const reserve = roundTrip == null ? null : O2_SUPPLY_PCT - Math.round(roundTrip)
@@ -236,29 +270,7 @@ function RouteCards({ route }: { route: RouteResponse }) {
         unit="µSv"
         sub="round trip"
       />
-      <Card>
-        <Label>Slope limit</Label>
-        <span className="font-mono text-number font-semibold">
-          {draft}
-          <span className="text-sm font-normal text-muted"> °</span>
-        </span>
-        <input
-          type="range"
-          min={SLOPE_RANGE_DEG[0]}
-          max={SLOPE_RANGE_DEG[1]}
-          step={1}
-          value={draft}
-          onChange={(e) => setDraft(Number(e.target.value))}
-          onPointerUp={commit}
-          onKeyUp={commit}
-          onBlur={commit}
-          className="h-(--size-tap) w-full accent-route"
-          aria-label="Maximum walkable slope"
-        />
-        <span className="text-xs text-muted">
-          route max <span className="font-mono">{fmt(route.max_slope_deg, 1, '°')}</span>
-        </span>
-      </Card>
+      <SlopeLimit routeMax={route.max_slope_deg} />
     </div>
   )
 }
@@ -268,6 +280,7 @@ export function EvaPanel() {
   const goal = useAppStore((s) => s.goal)
   const route = useAppStore((s) => s.route)
   const state = useAppStore((s) => s.routeState)
+  const routeError = useAppStore((s) => s.routeError)
   const offline = useAppStore((s) => s.offline)
   const routeStale = useAppStore((s) => s.routeStale)
   const clearRoute = useAppStore((s) => s.clearRoute)
@@ -279,6 +292,15 @@ export function EvaPanel() {
   const straight = useMapStore((s) => s.straight)
   const play = useCopilotStore((s) => s.play)
   const copilotState = useCopilotStore((s) => s.state)
+  const copilotError = useCopilotStore((s) => s.error)
+
+  const ok = route?.status === 'ok' && goal
+  const offlineOnly = route?.reason === OFFLINE_ROUTE_REASON || route?.reason === OFFLINE_LOAD_REASON
+  // No route under this limit: keep the slider so the limit can be raised.
+  const showLimitAlone =
+    Boolean(start && goal) && state !== 'error' && route?.status === 'no_route' && !offlineOnly
+  // The Copilot walks the user's route when the server planned one (offline routes are precomputed).
+  const userRoute = ok && start && goal && !offline ? { start, goal, maxSlopeDeg } : undefined
 
   const goalFeature = goal ? poi?.features.find((f) => sameLonLat(f.geometry.coordinates, goal)) : undefined
   const picked = poi?.features.find((f) => f.properties.id === selectedPoiId)
@@ -290,9 +312,10 @@ export function EvaPanel() {
   else if (!goal) top = <Hint text="Now click the map to set the goal." />
   else if (state === 'loading' && !route) top = <Hint text="Planning the route and the way back…" />
   else if (state === 'error')
-    top = <VerdictBlock status="unknown" word="NO DATA" line="Route planning failed. Try again." />
+    top = (
+      <VerdictBlock status="unknown" word="NO DATA" line={routeError ?? 'Route planning failed. Try again.'} />
+    )
   else if (route && route.status !== 'ok') {
-    const offlineOnly = route.reason === OFFLINE_ROUTE_REASON || route.reason === OFFLINE_LOAD_REASON
     top = offlineOnly ? (
       <Hint text={route.reason ?? ''} />
     ) : (
@@ -318,7 +341,6 @@ export function EvaPanel() {
     )
   }
 
-  const ok = route?.status === 'ok' && goal
   return (
     <section aria-label="EVA plan" className={`flex flex-col gap-4 ${state === 'loading' && route ? 'opacity-70' : ''}`}>
       <div className="flex items-center justify-between">
@@ -339,6 +361,7 @@ export function EvaPanel() {
 
       {ok && goal && <TargetBlock goal={goal} feature={goalFeature} />}
       {ok && route && <RouteCards route={route} />}
+      {showLimitAlone && <SlopeLimit wide />}
 
       {ok && straight && (
         <p className="rounded-card border border-line px-4 py-3 text-[13px] text-text-2">
@@ -390,23 +413,37 @@ export function EvaPanel() {
       <div className="flex flex-col gap-2">
         <button
           type="button"
-          onClick={() => void play('turnback')}
+          onClick={() => void play('turnback', userRoute)}
           disabled={copilotState === 'loading'}
           className="h-[52px] rounded-card bg-route text-base font-semibold tracking-[0.02em] text-bg hover:bg-route-hover disabled:opacity-60"
-          title="Plays the EVA Copilot on simulated suit telemetry: a walk toward Mont Mercou"
+          title={
+            userRoute
+              ? 'Plays the EVA Copilot on simulated suit telemetry along this route'
+              : 'Plays the EVA Copilot on simulated suit telemetry: a demo walk up Mount Sharp, beyond Mont Mercou'
+          }
         >
-          {copilotState === 'loading' ? 'Loading…' : 'Start EVA'}
+          {copilotState === 'loading' ? 'Loading…' : userRoute ? 'Start EVA' : 'Start demo EVA'}
         </button>
         <button
           type="button"
-          onClick={() => void play('leak')}
+          onClick={() => void play('leak', userRoute)}
           disabled={copilotState === 'loading'}
           className="min-h-(--size-tap) rounded-card border border-line-strong text-sm text-text-2 hover:border-route disabled:opacity-60"
         >
           Suit leak demo
         </button>
+        {copilotState === 'error' && copilotError && (
+          <p role="alert" className="flex items-center gap-2 text-[13px] text-text-2">
+            <span className="text-unknown">
+              <StatusIcon status="unknown" size={14} />
+            </span>
+            {copilotError}
+          </p>
+        )}
         <span className="text-[11px] text-muted">
-          Start EVA plays the EVA Copilot on simulated suit telemetry over real Gale terrain.
+          {userRoute
+            ? 'Plays the EVA Copilot on this route with simulated suit telemetry over real Gale terrain.'
+            : 'No route planned: plays a demo walk up Mount Sharp, beyond Mont Mercou, with simulated suit telemetry.'}
         </span>
       </div>
 

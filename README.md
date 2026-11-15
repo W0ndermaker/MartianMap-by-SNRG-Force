@@ -21,7 +21,8 @@ Walk from the crew base at Bradbury Landing to the layered rocks of Mount Sharp'
 | `frontend/` | React app: map, panels, offline demo mode — see `frontend/README.md` |
 | `backend/` | FastAPI: route planning, conditions, points of interest |
 | `data/` | Data files built from NASA sources, plus build scripts in `data/scripts/` |
-| `docs/` | API contract, sources, risk rule, data report |
+| `docs/` | API contract, sources and licenses, risk rule |
+| `design/reference/` | UI mock-ups (AI-generated, labelled), design reference only |
 
 ## Run locally
 
@@ -37,6 +38,8 @@ cd frontend && npm install && cp .env.example .env.local && npm run dev
 
 The frontend works without the backend, on precomputed demo routes and bundled NASA data.
 
+Rebuild the data files: `python3 data/scripts/build_data.py` (downloads raw NASA files into `data/raw/`, not committed), then, on the real elevation map, `cd backend && DEM_PATH=data_raw/gale_dem.tif .venv/bin/python ../data/scripts/build_demo_routes.py` and `DEM_PATH=data_raw/gale_dem.tif .venv/bin/python scripts/build_copilot_scenario.py`. A test fails if the offline routes were built on synthetic terrain.
+
 ## NASA data
 
 USGS MSL Gale Merged DEM (HiRISE, CTX, HRSC tied to MOLA), Mars Trek imagery (HiRISE, CTX, Viking, THEMIS, MOLA), Curiosity REMS weather, Curiosity RAD radiation, Curiosity traverse and stops, Curiosity photos. Full list with links: `docs/sources.md`.
@@ -44,5 +47,7 @@ USGS MSL Gale Merged DEM (HiRISE, CTX, HRSC tied to MOLA), Mars Trek imagery (Hi
 ## Use of AI tools
 
 - Claude Code (Anthropic) helped write the frontend (scaffold, panels, state store, API client, offline mode), the data build scripts in `data/scripts/`, and the backend (elevation map preparation, route planning, EVA metrics and verdict, validation script, tests). The team reviewed and tested this code.
-- No AI-generated images or videos are used.
+- The UI mock-ups in `design/reference/` were made with Claude (AI). Each carries a visible "AI-generated design mock-up" label; they are a design reference only and are not shown in the app.
+- No AI-generated images, video or audio are used in the app: photos and maps are NASA/USGS data, icons are SVG shapes written as code, the Copilot voice is the browser's speech synthesis.
+- No AI model runs inside the app: the EVA Copilot is fixed rules in code. Full details: `docs/sources.md`.
 - The project idea is the team's own.

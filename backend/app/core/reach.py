@@ -24,7 +24,7 @@ def travel_minutes(
     """Walking time in minutes from ``origin`` (row, col) to every cell; inf if unreachable.
 
     Cells steeper than ``max_slope_deg`` or without elevation are impassable. Time is physical
-    (slope only): no roughness or corridor weighting, which only steers the route choice.
+    (slope only): no roughness weighting, which only steers the route choice of a planned route.
     """
     passable = np.isfinite(terrain.elev) & (terrain.slope <= max_slope_deg)
     seconds_per_cell = np.where(

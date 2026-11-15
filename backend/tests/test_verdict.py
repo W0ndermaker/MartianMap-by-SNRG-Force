@@ -91,3 +91,13 @@ def test_unknown_weather_is_caution_with_reason():
     r = assess_eva(_leg(10), _leg(10), "unknown", 18)
     assert r["verdict"] == "caution"
     assert "No weather data for sol 18" in r["verdict_reasons"]
+
+
+def test_reserve_with_science_gear_counts_the_higher_rate():
+    # 8.5 % left: 36 min at the planned rate (caution), 29 min at 1.25x (below the reserve).
+    free = assess_eva(_leg(45.75), _leg(45.75), "green", 1)
+    loaded = assess_eva(_leg(45.75), _leg(45.75), "green", 1, c.LOAD_O2_RATE_FACTOR)
+    assert free["verdict"] == "caution"
+    assert "36 min of oxygen left" in " ".join(free["verdict_reasons"])
+    assert loaded["verdict"] == "no_go"
+    assert "Only 29 min of oxygen left" in loaded["verdict_reasons"][0]

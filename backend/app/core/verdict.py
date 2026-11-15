@@ -16,8 +16,17 @@ from app.core.oxygen import pct_to_minutes, reserve_state
 Verdict = Literal["go", "caution", "no_go"]
 
 
-def assess_eva(outbound: dict, back: dict, risk_level: str | None, sol: int | None) -> dict:
+def assess_eva(
+    outbound: dict,
+    back: dict,
+    risk_level: str | None,
+    sol: int | None,
+    o2_rate_factor: float = 1.0,
+) -> dict:
     """Combine the outbound and return routes (plan_route dicts) into the decision fields.
+
+    ``o2_rate_factor`` is the oxygen use per minute relative to the plan (LOAD_O2_RATE_FACTOR
+    with science gear): the minutes left and the reserve are counted at that rate.
 
     Returns return_duration_min, return_o2_used_pct, round_trip_o2_used_pct, o2_reserve_pct
     (percent of the suit supply, None without a way back), verdict and verdict_reasons
@@ -43,17 +52,17 @@ def assess_eva(outbound: dict, back: dict, risk_level: str | None, sol: int | No
             o2_reserve_pct=round(c.O2_SUPPLY_PCT - round_trip, 1),
         )
         left = c.O2_SUPPLY_PCT - round_trip
-        state = reserve_state(left)
+        state = reserve_state(left, o2_rate_factor)
         if round_trip > c.O2_SUPPLY_PCT:
             reasons_no_go.append(f"Round trip needs {round_trip:.0f} % of the oxygen supply")
         elif state == "below":
             reasons_no_go.append(
-                f"Only {pct_to_minutes(left):.0f} min of oxygen left after the way back, "
+                f"Only {pct_to_minutes(left, o2_rate_factor):.0f} min of oxygen left after the way back, "
                 f"below the {c.COPILOT_RESERVE_MIN:.0f}-min emergency reserve"
             )
         elif state == "low":
             reasons_caution.append(
-                f"{pct_to_minutes(left):.0f} min of oxygen left after the way back, close to the "
+                f"{pct_to_minutes(left, o2_rate_factor):.0f} min of oxygen left after the way back, close to the "
                 f"{c.COPILOT_RESERVE_MIN:.0f}-min emergency reserve"
             )
 

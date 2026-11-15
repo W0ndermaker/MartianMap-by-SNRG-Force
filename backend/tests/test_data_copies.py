@@ -29,3 +29,11 @@ def test_backend_data_matches_source(source_name, copy_name):
     assert json.loads(copy.read_text(encoding="utf-8")) == json.loads(
         source.read_text(encoding="utf-8")
     ), f"{copy} differs from {source}; copy it again"
+
+
+def test_offline_demo_files_were_built_on_the_real_map():
+    """The offline routes must come from the real elevation map, never the synthetic fallback."""
+    demo = SOURCE / "demo_routes.json"
+    if not demo.is_file():
+        pytest.skip(f"{demo} not found")
+    assert json.loads(demo.read_text(encoding="utf-8"))["health"]["terrain"] == "real"

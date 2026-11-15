@@ -158,6 +158,16 @@ def build_scenario(
         tank = max(tank - rate * c.SIM_STEP_MIN, 0.0)
         t += c.SIM_STEP_MIN
 
+    if phase == "out" and tank > 0 and steps:
+        # A short walk: the target is reached without a turn-back call.
+        events.append(
+            {
+                "t_min": t,
+                "level": steps[-1]["copilot"]["level"],
+                "message": f"Target reached with {tank:.0f} % oxygen "
+                f"({pct_to_minutes(tank):.0f} min). Start the walk back on the planned route",
+            }
+        )
     if phase == "back" and tank > 0:
         left_min = pct_to_minutes(tank)
         events.append(

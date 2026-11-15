@@ -18,7 +18,7 @@ Without a backend (or with `VITE_API_URL` empty) the app runs in **offline demo*
 | --- | --- |
 | `src/api/` | Contract types, API client with offline fallback |
 | `src/store/` | Shared Zustand store (map and panels) |
-| `src/panels/` | Conditions, EVA plan, elevation profile, POI card, layers and slope slider |
+| `src/panels/` | Conditions, EVA plan, elevation profile, layers and slope slider, EVA Copilot |
 | `src/map/` | 3D map (developer A): CesiumJS scene, terrain, layers, route rendering |
 
 `@data/*` is an alias for the repository's `data/` folder.
@@ -38,7 +38,7 @@ Root directory: `frontend`. Build command `npm run build`, output `dist`. Set `V
 - 3D terrain from the USGS HiRISE DEM mosaic (1 m, averaged to ~10 m) plus HRSC-MOLA 200 m around it,
   in `public/data/terrain/`. Checked against 24 Curiosity end-of-drive elevations: within ±1 m.
 - Map layers: no-go zones (steeper than the max-slope slider), elevation, slope, THEMIS day IR, SIM 3292 geology,
-  MOLA shaded relief. Route coloured by slope, hazard icons, POI pins, Curiosity traverse from `data/`.
+  MOLA shaded relief. Route as one glowing line (slope along it in the elevation profile), straight-line comparison, walk-back rings, hazard icons, POI pins, Curiosity traverse from `data/`.
 - Hovering the elevation profile highlights the spot on the route. Flyover and Home view buttons.
 - Demo deep links: `/?demo=<n>` (n-th pair of `data/demo_routes.json`) or `/?start=lon,lat&goal=lon,lat`;
   add `&flyover=1` to start the camera flyover once the route is ready.

@@ -2,8 +2,8 @@
 // at video speed, pauses on each Copilot event and speaks it with the browser's speech synthesis.
 
 import { create } from 'zustand'
-import { api } from '../api/client'
-import type { CopilotCase, CopilotScenario } from '../api/types'
+import { api, HttpError } from '../api/client'
+import type { CopilotCase, CopilotScenario, LonLat } from '../api/types'
 
 export type PlayerState = 'idle' | 'loading' | 'playing' | 'done' | 'error'
 
@@ -15,11 +15,27 @@ const EVENT_HOLD_MAX_MS = 3500
 /** Hold on an event when speech is unavailable (ms). */
 const EVENT_HOLD_SILENT_MS = 1800
 
+/** The user's planned route; without it the precomputed demo walk is played. */
+export interface CopilotRoute {
+  start: LonLat
+  goal: LonLat
+  maxSlopeDeg: number
+}
+
+const cacheKey = (scenarioCase: CopilotCase, route?: CopilotRoute) =>
+  route ? `${scenarioCase}:${route.start}:${route.goal}:${route.maxSlopeDeg}` : scenarioCase
+
 interface CopilotState {
   /** Scenario being shown, and the ones already loaded (by case). */
   scenario: CopilotScenario | null
-  loaded: Partial<Record<CopilotCase, CopilotScenario>>
+  loaded: Record<string, CopilotScenario>
   state: PlayerState
+  /** Why the scenario could not be loaded (state 'error'). */
+  error: string | null
+  /** The walk shown is the precomputed demo, although the user asked for their own route (offline). */
+  demoInsteadOfRoute: boolean
+  /** The route the last play was asked for (Replay plays it again). */
+  route: CopilotRoute | undefined
   /** Index of the current step in scenario.steps. */
   index: number
   /** Last spoken message and its level, for the panel. */
@@ -27,7 +43,7 @@ interface CopilotState {
   voice: boolean
   /** The crew acknowledged the current alert: the banner stops blinking. */
   acknowledged: boolean
-  play: (scenarioCase: CopilotCase) => Promise<void>
+  play: (scenarioCase: CopilotCase, route?: CopilotRoute) => Promise<void>
   stop: () => void
   acknowledge: () => void
   /** Leaves the demo and returns to the planning panel. */
@@ -58,26 +74,38 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
   scenario: null,
   loaded: {},
   state: 'idle',
+  error: null,
+  demoInsteadOfRoute: false,
+  route: undefined,
   index: 0,
   message: null,
   voice: true,
   acknowledged: false,
 
-  play: async (scenarioCase) => {
+  play: async (scenarioCase, route) => {
     get().stop()
     const id = ++runId
-    set({ state: 'loading', index: 0, message: null, acknowledged: false })
-    let scenario = get().loaded[scenarioCase]
+    set({ state: 'loading', error: null, route, index: 0, message: null, acknowledged: false })
+    const key = cacheKey(scenarioCase, route)
+    let scenario = get().loaded[key]
+    let demoInsteadOfRoute = false
     try {
-      scenario ??= (await api.copilotScenario(scenarioCase)).data
-      set({ loaded: { ...get().loaded, [scenarioCase]: scenario } })
+      if (!scenario) {
+        const result = await api.copilotScenario(scenarioCase, route)
+        scenario = result.data
+        demoInsteadOfRoute = Boolean(route) && result.offline
+        // Cache only what the server computed for this request, not the offline stand-in.
+        if (!demoInsteadOfRoute) set({ loaded: { ...get().loaded, [key]: scenario } })
+      }
     } catch (error) {
       console.error(error)
-      set({ state: 'error' })
+      if (id !== runId) return
+      const reason = error instanceof HttpError ? error.message : 'Could not load the EVA'
+      set({ state: 'error', error: `EVA Copilot: ${reason}` })
       return
     }
     if (id !== runId) return
-    set({ scenario, state: 'playing' })
+    set({ scenario, state: 'playing', demoInsteadOfRoute })
 
     const steps = scenario.steps
     const stepMs = (PLAYBACK_S * 1000) / Math.max(steps.length, 1)
@@ -120,7 +148,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
 
   close: () => {
     get().stop()
-    set({ state: 'idle', index: 0, message: null, acknowledged: false })
+    set({ state: 'idle', error: null, index: 0, message: null, acknowledged: false })
   },
 
   toggleVoice: () => {

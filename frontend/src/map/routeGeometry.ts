@@ -1,7 +1,7 @@
-// Pure geometry helpers for routes (no Cesium objects): distances along the path, slope bands,
-// position at a given distance. Distances on the Mars sphere.
+// Pure geometry helpers for routes (no Cesium objects): distances along the path, position at a
+// given distance, bearing, and the straight-line comparison. Distances on the Mars sphere.
 
-import type { LonLat, ProfilePoint } from '../api/types';
+import type { LonLat } from '../api/types';
 
 /** Path vertex from the API: [longitude east, latitude, elevation m]. */
 export type LonLatElev = [number, number, number];
@@ -17,55 +17,12 @@ export function distanceM(a: LonLat, b: LonLat): number {
   return 2 * R_MARS * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-export type SlopeBand = 'low' | 'mid' | 'high';
-
-/**
- * Display bands relative to the user's max-slope limit (the backend treats anything steeper as impassable).
- * Red starts where the backend flags a hazard (HAZARD_SLOPE_FRACTION = 0.8 of the limit); the 50 % split for
- * yellow is a display convention. Both are MODEL ASSUMPTIONS, not physiological thresholds.
- */
-export const BAND_SPLIT = { mid: 0.5, high: 0.8 };
-
-export function bandFor(slopeDeg: number, maxSlopeDeg: number): SlopeBand {
-  if (slopeDeg >= maxSlopeDeg * BAND_SPLIT.high) return 'high';
-  if (slopeDeg >= maxSlopeDeg * BAND_SPLIT.mid) return 'mid';
-  return 'low';
-}
-
 export function cumulative(path: LonLatElev[]): number[] {
   const out = [0];
   for (let i = 1; i < path.length; i++) {
     out.push(out[i - 1] + distanceM([path[i - 1][0], path[i - 1][1]], [path[i][0], path[i][1]]));
   }
   return out;
-}
-
-/** Slope at a distance along the route, from the nearest profile sample. */
-export function slopeAt(profile: ProfilePoint[], distM: number): number {
-  if (!profile.length) return 0;
-  let lo = 0, hi = profile.length - 1;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (profile[mid].dist_m <= distM) lo = mid; else hi = mid;
-  }
-  return Math.abs(distM - profile[lo].dist_m) <= Math.abs(profile[hi].dist_m - distM)
-    ? profile[lo].slope_deg : profile[hi].slope_deg;
-}
-
-export interface BandRun { band: SlopeBand; coords: LonLatElev[] }
-
-/** Splits the path into runs of equal slope band; runs share their boundary vertex so the line stays continuous. */
-export function bandRuns(path: LonLatElev[], profile: ProfilePoint[], maxSlopeDeg: number): BandRun[] {
-  if (path.length < 2) return [];
-  const cum = cumulative(path);
-  const runs: BandRun[] = [];
-  for (let i = 1; i < path.length; i++) {
-    const band = bandFor(slopeAt(profile, (cum[i - 1] + cum[i]) / 2), maxSlopeDeg);
-    const last = runs[runs.length - 1];
-    if (last && last.band === band) last.coords.push(path[i]);
-    else runs.push({ band, coords: [path[i - 1], path[i]] });
-  }
-  return runs;
 }
 
 /** Interpolated [lon, lat, elev] at a distance along the path (clamped to the ends). */

@@ -200,8 +200,10 @@ Response:
 
 Demo EVA for the video and the offline mode: simulated suit telemetry on a real route, with the Copilot decision at every minute. `case` (default `turnback`, anything else gives 422):
 
-- `turnback` — a walk from the base toward Mont Mercou, beyond the walk-back limit. The Copilot calls "Turn back now" at the point of no return, counting the 30-minute reserve and the real route back; the astronaut walks back on the fastest walkable route.
+- `turnback` — a walk from the base up Mount Sharp's slopes, about 2.4 km beyond Mont Mercou ([137.402, −4.7573], about 236 min away, beyond the 195-min walk-back limit). The Copilot calls "Turn back now" at the point of no return, counting the 30-minute reserve and the real route back; the astronaut walks back on a route planned exactly like the route verdict's way back.
 - `leak` — a suspected suit leak on the way to Pahrump Hills; emergency return.
+
+Optional: `start` and `goal` (each `lon` and `lat` as two repeated parameters: `?start=137.44&start=-4.59&goal=137.46&goal=-4.59`) and `max_slope_deg` (default 20). With them the same simulation runs on the user's route instead of the demo route, and the way back leads to `start`. A short walk ends at the target with a "Target reached" event and no turn-back. Only one of `start` / `goal`, or a route that cannot be planned, gives 422 with the reason.
 
 Fields: `case`, `note`, `outbound_path` and `return_path` (GeoJSON LineString), `leak_at_min` (null for `turnback`), `turned_back_at_min`, `arrived_back`, `final_o2_pct`, `events` (`{t_min, level, message}` — what the voice says), `steps` (`{t_min, position, phase: "out" | "back", o2_pct, slope_deg, copilot}` with `copilot` as in section 5). The same content is saved as `data/copilot_scenario_turnback.json` and `data/copilot_scenario_leak.json`.
 
@@ -222,3 +224,5 @@ Fields: `case`, `note`, `outbound_path` and `return_path` (GeoJSON LineString), 
 | 2026-11-15 | `risk_level` value `unknown` for sols with missing REMS inputs (was `green`); route verdict CAUTION "No weather data for sol N" | B, C data |
 | 2026-11-15 | `GET /api/copilot/scenario?case=turnback\|leak` (default `turnback`); field `case`; `leak_at_min` may be null; two offline files instead of one | B |
 | 2026-11-15 | Route request `carrying_load`; response `eva_dose_usv` (additive) | B |
+| 2026-11-15 | Route cost no longer prefers Curiosity's path (it made long detours, e.g. 14.5 km instead of 9 km to Mont Mercou); the route, its way back and the Copilot's way back are planned the same way; the walk-back rings use the fastest walk, so a planned route that steers around rough ground can be a few minutes (about 2 %) slower than the ring suggests. Turn-back demo target moved beyond Mont Mercou, past the walk-back limit | B |
+| 2026-11-15 | `GET /api/copilot/scenario`: optional `start`, `goal`, `max_slope_deg` to run the Copilot demo on the user's route (additive); with `carrying_load` the verdict counts the reserve minutes at the loaded oxygen rate | B |

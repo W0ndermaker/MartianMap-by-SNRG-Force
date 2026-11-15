@@ -63,3 +63,25 @@ def test_turnback_scenario_turns_at_the_point_of_no_return_and_keeps_the_reserve
     assert s["turned_back_at_min"] == turn[0]["t_min"]
     assert s["arrived_back"]
     assert s["final_o2_pct"] >= reserve_pct()
+
+
+def test_scenario_runs_on_the_users_route():
+    # Base to Yellowknife Bay: a short walk, no turn-back call; the target is reached.
+    goal = [137.4575, -4.5893]
+    params = {"case": "turnback", "start": BASE, "goal": goal}
+    r = client.get("/api/copilot/scenario", params=params)
+    assert r.status_code == 200
+    s = CopilotScenario.model_validate(r.json())
+    assert s.outbound_path.coordinates[0][:2] == pytest.approx(BASE, abs=1e-3)
+    assert s.outbound_path.coordinates[-1][:2] == pytest.approx(goal, abs=1e-3)
+    assert s.turned_back_at_min is None
+    assert "Target reached" in s.events[-1].message
+
+
+def test_scenario_on_a_bad_route_is_422_not_offline():
+    only_start = client.get("/api/copilot/scenario", params={"start": BASE})
+    assert only_start.status_code == 422
+    nan = client.get("/api/copilot/scenario", params={"start": BASE, "goal": ["nan", -4.6]})
+    assert nan.status_code == 422
+    outside = client.get("/api/copilot/scenario", params={"start": BASE, "goal": [137.9, -4.6]})
+    assert outside.status_code == 422

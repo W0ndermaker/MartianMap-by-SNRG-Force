@@ -20,7 +20,8 @@ def post_route(request: RouteRequest) -> RouteResponse:
     terrain, factor = get_terrain(), get_cost_factor()
     load = request.carrying_load
     speed = request.speed_flat_m_s * (c.LOAD_SPEED_FACTOR if load else 1.0)
-    extra = {"cost_factor": factor, "o2_rate_factor": c.LOAD_O2_RATE_FACTOR if load else 1.0}
+    rate_factor = c.LOAD_O2_RATE_FACTOR if load else 1.0
+    extra = {"cost_factor": factor, "o2_rate_factor": rate_factor}
     args = (request.max_slope_deg, speed)
     result = plan_route(terrain, request.start, request.goal, *args, **extra)
     if result["status"] == "ok":
@@ -30,7 +31,7 @@ def post_route(request: RouteRequest) -> RouteResponse:
             conditions = datasets.get_conditions(request.sol)
             risk, sol = conditions.risk_level, conditions.sol
             dose_rate = conditions.radiation_usv_per_hour
-        result.update(assess_eva(result, back, risk, sol))
+        result.update(assess_eva(result, back, risk, sol, rate_factor))
         result["eva_dose_usv"] = eva_dose_usv(
             dose_rate, result["duration_min"], result.get("return_duration_min")
         )

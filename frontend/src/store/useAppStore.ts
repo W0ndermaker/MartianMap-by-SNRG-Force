@@ -1,7 +1,7 @@
 // Shared app state for the map (developer A) and the panels (developer C).
 
 import { create } from 'zustand'
-import { api, hasBackend, HEARTBEAT_MS, ping } from '../api/client'
+import { api, hasBackend, HEARTBEAT_MS, HttpError, ping } from '../api/client'
 import type { Conditions, Health, LonLat, PoiCollection, RouteResponse } from '../api/types'
 // Defaults from data/suit_params.json (max_slope_deg, speed_flat_m_s).
 import suit from '@data/suit_params.json'
@@ -37,6 +37,8 @@ export interface AppState {
   carryingLoad: boolean
   route: RouteResponse | null
   routeState: LoadState
+  /** Why planning failed (routeState 'error'): the server's reason or a generic line. */
+  routeError: string | null
 
   sol: number | null
   conditions: Conditions | null
@@ -66,6 +68,9 @@ export interface AppState {
   toggleLayer: (layer: keyof Layers) => void
 }
 
+/** Number of the latest conditions request: an older answer must not replace a newer sol. */
+let conditionsRequest = 0
+
 export const SLOPE_RANGE_DEG = suit.max_slope_range_deg.value as [number, number]
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -80,6 +85,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   carryingLoad: false,
   route: null,
   routeState: 'idle',
+  routeError: null,
   sol: null,
   conditions: null,
   conditionsState: 'idle',
@@ -153,6 +159,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Never plan without the sol while conditions are still loading: the verdict would ignore the
     // weather. loadConditions plans the route as soon as the sol is known.
     if (sol === null && conditionsState !== 'error') return
+    const isCurrent = () => {
+      const now = get()
+      return (
+        now.start === start &&
+        now.goal === goal &&
+        now.maxSlopeDeg === maxSlopeDeg &&
+        now.carryingLoad === carryingLoad &&
+        now.sol === sol
+      )
+    }
     try {
       const result = await api.route({
         start,
@@ -162,34 +178,35 @@ export const useAppStore = create<AppState>((set, get) => ({
         ...(sol === null ? {} : { sol }),
         ...(carryingLoad ? { carrying_load: true } : {}),
       })
-      // Ignore a response for points the user has already moved.
-      const now = get()
-      if (
-        now.start !== start ||
-        now.goal !== goal ||
-        now.maxSlopeDeg !== maxSlopeDeg ||
-        now.carryingLoad !== carryingLoad
-      )
-        return
+      // Ignore a response for a request that is no longer current (points moved, slope, gear or
+      // sol changed): a late answer must not overwrite the verdict of the newer request.
+      if (!isCurrent()) return
       set({
         route: result.data,
         routeState: 'ready',
+        routeError: null,
         offline: result.offline,
         routeStale: false,
         connectionLost: result.offline && hasBackend ? get().connectionLost : false,
       })
     } catch (error) {
       console.error(error)
-      set({ route: null, routeState: 'error' })
+      if (!isCurrent()) return
+      // The server answered with an error: it is online, the request itself failed.
+      const routeError =
+        error instanceof HttpError ? error.message : 'Route planning failed. Try again.'
+      set({ route: null, routeState: 'error', routeError, ...(error instanceof HttpError ? { offline: false } : {}) })
     }
   },
 
-  clearRoute: () => set({ start: null, goal: null, route: null, routeState: 'idle' }),
+  clearRoute: () => set({ start: null, goal: null, route: null, routeState: 'idle', routeError: null }),
 
   loadConditions: async (sol) => {
+    const id = ++conditionsRequest
     set({ conditionsState: 'loading' })
     try {
       const result = await api.conditions(sol)
+      if (id !== conditionsRequest) return
       set({
         conditions: result.data,
         sol: result.data.sol,
@@ -200,6 +217,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (get().start && get().goal) void get().planRoute()
     } catch (error) {
       console.error(error)
+      if (id !== conditionsRequest) return
       set({ conditionsState: 'error' })
     }
   },

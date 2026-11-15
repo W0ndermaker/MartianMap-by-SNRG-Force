@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import itertools
 
 from app.core import constants as c
-from app.core.costs import cost_factor
+from app.core.costs import roughness_factor
 from app.core.eva import path_metrics
 from app.core.geo import polyline_to_cells, to_cell
 from app.core.planner import plan_route
@@ -134,10 +134,9 @@ def main() -> None:
     points = np.asarray(load_drive_points(args.traverse), dtype=float)
     pois = json.loads(args.poi.read_text(encoding="utf-8"))["features"]
 
-    # Routes as the API serves them: roughness penalty and Curiosity's path as a preferred corridor.
-    served = cost_factor(terrain.elev, terrain.grid, args.traverse)
-    # The comparison with the rover must not reward following the rover itself: corridor off.
-    independent = cost_factor(terrain.elev, terrain.grid, None)
+    # Routes as the API serves them: slope limit and roughness penalty. They do not use the rover
+    # path, so the comparison with Curiosity is independent.
+    served = roughness_factor(terrain.elev)
 
     legs = []
     idx = 0
@@ -154,7 +153,7 @@ def main() -> None:
             tuple(goal),
             args.max_slope,
             c.DEFAULT_SPEED_FLAT_M_S,
-            cost_factor=independent,
+            cost_factor=served,
         )
         leg = {
             "from": a["properties"]["name"],

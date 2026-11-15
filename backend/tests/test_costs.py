@@ -1,10 +1,7 @@
-import json
-
 import numpy as np
 import pytest
 
-from app.core import constants as c
-from app.core.costs import roughness_factor, roughness_m, traverse_mask
+from app.core.costs import roughness_factor, roughness_m
 from app.core.geo import make_grid, to_lonlat
 from app.core.planner import plan_route
 from app.core.terrain import Terrain, compute_slope_deg
@@ -31,30 +28,7 @@ def _flat_terrain():
     return Terrain(elev=elev, slope=compute_slope_deg(elev, 10.0), grid=grid, kind="synthetic")
 
 
-def test_traverse_mask_covers_the_path(tmp_path):
-    t = _flat_terrain()
-    a, b = to_lonlat(t.grid, 10, 5), to_lonlat(t.grid, 10, 30)
-    f = tmp_path / "traverse.geojson"
-    f.write_text(
-        json.dumps(
-            {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "geometry": {"type": "LineString", "coordinates": [list(a), list(b)]},
-                    }
-                ],
-            }
-        )
-    )
-    mask = traverse_mask(t.grid, f)
-    assert mask[10, 5:31].all()
-    radius = round(c.TRAVERSE_BUFFER_M / t.grid.cell_size_m)
-    assert not mask[10 + radius + 2, 15]
-
-
-def test_planner_prefers_the_cheaper_corridor():
+def test_planner_avoids_costly_cells():
     t = _flat_terrain()
     start, goal = to_lonlat(t.grid, 5, 2), to_lonlat(t.grid, 5, 40)
     factor = np.ones(t.grid.shape)

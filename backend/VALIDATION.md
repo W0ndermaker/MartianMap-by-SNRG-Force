@@ -28,18 +28,19 @@ The map the routes are computed on agrees with the rover's record to within a me
 For all 28 pairs of points of interest:
 
 - the straight line crosses terrain steeper than 20° in **17 of 28** pairs (up to 33.5°);
-- our route stays within the limit in every pair (max 18.1°);
-- the safe route is **22.8 % longer** than the straight line (median).
+- our route is found in all 28 pairs and stays within the limit (max 19.8°);
+- the safe route is about as long as the straight line (median −2.2 %). The straight line is
+  measured cell by cell on the 10 m grid, which adds a little length, so in practice avoiding
+  steep ground costs almost no extra distance here.
 
-Routes are taken exactly as the API serves them: besides the slope limit they avoid rough
-terrain and prefer Curiosity's driven path as a known trafficable corridor, which accounts for
-most of the extra length (with the slope limit alone the median was under 1 %).
+Routes are taken exactly as the API serves them: the slope limit plus a penalty for rough
+terrain. They do not use Curiosity's path.
 
 ## 3. Our routes vs Curiosity's real drives
 
 The points of interest lie on the rover path in mission order, so every consecutive pair is one
 real leg. The real path is placed on our grid and measured with the same model as our route.
-Here our route ignores the Curiosity corridor; otherwise it would simply copy the rover path.
+Our route does not use the rover path, so the comparison is independent.
 
 | Leg | Curiosity, m | Ours, m | Ratio | Ascent real / ours, m | Max slope real / ours, ° | Real path within 20° |
 | --- | --- | --- | --- | --- | --- | --- |

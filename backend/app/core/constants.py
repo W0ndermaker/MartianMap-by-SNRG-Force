@@ -4,8 +4,8 @@
 MARS_RADIUS_M = 3_396_190.0
 
 # Cell size of the prepared elevation map.
-# ASSUMPTION: 10 m keeps the working area (SYNTHETIC_BOUNDS) near 1 million cells (CLAUDE.md
-# budget); the 1 m source is averaged down. 5 m would give about 5 million cells.
+# ASSUMPTION: 10 m keeps the working area (SYNTHETIC_BOUNDS) near 1 million cells (memory and
+# speed budget of a free-tier server); the 1 m source is averaged down. 5 m would give about 5 million cells.
 CELL_SIZE_M = 10.0
 
 # Working area of the prepared elevation map: min lon, min lat, max lon, max lat (degrees).
@@ -27,8 +27,8 @@ DEM_TAG_LAT_TS = "GRID_LAT_TS"
 DEM_TAG_CELL_SIZE_M = "GRID_CELL_SIZE_M"
 
 # Curiosity landing site (Bradbury Landing), used as a sanity check of the real map.
-# Approximate values from the MSL mission documentation; elevation is the order of magnitude
-# stated in docs/DATA_NOTES.md.
+# Approximate values from the MSL mission documentation; the elevation range is the order of
+# magnitude of the landing site on the USGS Gale DEM (about -4500 m).
 LANDING_LON_LAT = (137.4417, -4.5895)
 LANDING_ELEV_RANGE_M = (-4600.0, -4400.0)
 
@@ -81,13 +81,6 @@ EVA_MAX_DURATION_MIN = 420.0
 ROUGHNESS_REF_M = 1.0
 ROUGHNESS_MAX_FACTOR = 4.0
 
-# Cells near Curiosity's driven path are known to be trafficable, so they cost less and routes follow
-# the rover's track like a road. ASSUMPTION: half the cost within 10 m of the path (one grid cell:
-# track width plus localisation error). Tuned so routes stay within 10 m of the track for >95 % of
-# their length on the demo routes, instead of cutting across its bends.
-TRAVERSE_BUFFER_M = 10.0
-TRAVERSE_COST_FACTOR = 0.5
-
 # The whole oxygen supply in percent (definition of o2_used_pct, not a physical value).
 O2_SUPPLY_PCT = 100.0
 
@@ -132,9 +125,13 @@ SIM_RETURN_SAMPLE_MIN = 10.0  # return routes are planned every N minutes of the
 SIM_CLIMB_RATE_FACTOR = 1.4  # breathing harder on climbs, to show the "slow down" advice
 SIM_LEAK_AT_FRACTION = 0.45  # the leak starts after 45 % of the planned walk out
 SIM_LEAK_RATE_FACTOR = 4.0  # leak: oxygen falls 4x faster than planned
-# Demo routes: the leak happens on the way to Pahrump Hills; the turn-back demo heads for
-# Mont Mercou, beyond the walk-back limit, so the Copilot must call the turn.
-SIM_ROUTES = {"leak": ("poi-01", "poi-04"), "turnback": ("poi-01", "poi-08")}
+# Demo routes from the base: the leak happens on the way to Pahrump Hills (poi-04); the turn-back
+# demo heads up Mount Sharp's slopes about 2.4 km beyond Mont Mercou, a walkable point (20 deg limit)
+# about 236 min from the base, beyond the 195-min walk-back limit, so the Copilot must call the
+# turn. The point was picked on the real elevation map (presentation choice, not a physical value).
+SIM_BASE_POI = "poi-01"
+SIM_LEAK_GOAL_POI = "poi-04"
+SIM_TURNBACK_GOAL_LON_LAT = (137.402, -4.7573)
 
 # API contract: profile has at most this many points.
 MAX_PROFILE_POINTS = 300

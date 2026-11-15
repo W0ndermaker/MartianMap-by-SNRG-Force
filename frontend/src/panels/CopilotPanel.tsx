@@ -53,7 +53,8 @@ const secondary =
   'min-h-(--size-tap) flex-1 rounded-card border border-line-strong text-sm text-text-2 hover:border-route'
 
 export function CopilotPanel() {
-  const { scenario, state, index, message, voice, acknowledged } = useCopilotStore()
+  const { scenario, state, index, message, voice, acknowledged, demoInsteadOfRoute, route } =
+    useCopilotStore()
   const { play, stop, toggleVoice, acknowledge, close } = useCopilotStore()
   if (!scenario) return null
   const step = scenario.steps[Math.min(index, scenario.steps.length - 1)]
@@ -155,7 +156,7 @@ export function CopilotPanel() {
         ) : (
           <button
             type="button"
-            onClick={() => void play(scenario.case)}
+            onClick={() => void play(scenario.case, route)}
             className="h-[52px] rounded-card bg-route text-base font-semibold text-bg hover:bg-route-hover"
           >
             Replay
@@ -177,6 +178,11 @@ export function CopilotPanel() {
         </div>
       </div>
 
+      {demoInsteadOfRoute && (
+        <span className="rounded-card border border-line px-3 py-2 text-[13px] text-text-2">
+          Offline: this is the precomputed demo walk, not your route.
+        </span>
+      )}
       <span className="text-[11px] text-muted">
         Suit telemetry is simulated. Terrain and route are real NASA data. Rule-based on-board logic,
         no cloud AI.
